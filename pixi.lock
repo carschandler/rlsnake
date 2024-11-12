@@ -3154,7 +3154,7 @@ packages:
   name: rlsnakes
   version: 0.1.0
   path: .
-  sha256: 05fe8584a444fa13084c05c91a1849a3224e9562cbcd89570af3bb8e2e58eb38
+  sha256: edcdae34f84209e8137e77f03d11802809ddb4e1012e5a123acefc6b17943856
   requires_dist:
   - torchrl>=0.6.0,<0.7
   - tensordict>=0.6.1,<0.7

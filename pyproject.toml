@@ -7,7 +7,6 @@ dependencies = [
  "jupyter>=1.1.1",
  "copier>=9.4.1",
  "gymnasium>=1.0.0",
- "snake",
 ]
 description = "Add a short description here"
 name = "rlsnakes"
@@ -33,6 +32,9 @@ ipython = ">=8.29.0,<9"
 jupyter = ">=1.1.1,<2"
 gymnasium = ">=1.0.0,<2"
 numpy = ">=1.26.4,<2"
+
+[tool.uv]
+override-dependencies = ["snake"]
 
 [tool.uv.sources]
 snake = { path = "lib/snake", editable = true }
