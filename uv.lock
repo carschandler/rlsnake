@@ -1538,7 +1538,7 @@ requires-dist = [
     { name = "gymnasium", specifier = ">=1.0.0" },
     { name = "ipython", specifier = ">=8.29.0" },
     { name = "jupyter", specifier = ">=1.1.1" },
-    { name = "snake", editable = "snake_env_package" },
+    { name = "snake", editable = "lib/snake" },
     { name = "tensordict", specifier = ">=0.6.1,<0.7" },
     { name = "torchrl", specifier = ">=0.6.0,<0.7" },
 ]
@@ -1606,7 +1606,7 @@ wheels = [
 [[package]]
 name = "snake"
 version = "0.0.1"
-source = { editable = "snake_env_package" }
+source = { editable = "lib/snake" }
 dependencies = [
     { name = "gymnasium" },
     { name = "pre-commit" },
