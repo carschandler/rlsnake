@@ -2,7 +2,11 @@
 authors = [{name = "carschandler", email = "92899389+carschandler@users.noreply.github.com"}]
 dependencies = [
  "torchrl>=0.6.0,<0.7",
- "tensordict>=0.6.1,<0.7", "gym>=0.26.2,<0.27",
+ "tensordict>=0.6.1,<0.7",
+ "ipython>=8.29.0",
+ "jupyter>=1.1.1",
+ "copier>=9.4.1",
+ "gymnasium>=1.0.0",
 ]
 description = "Add a short description here"
 name = "rlsnakes"
