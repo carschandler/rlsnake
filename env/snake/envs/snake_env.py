@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import TypeAlias
 
 import gymnasium as gym
 
@@ -22,6 +23,9 @@ class States(Enum):
     FOOD = 3
 
 
+Coordinate: TypeAlias = NDArray[np.int64]
+
+
 class SnakeEnv(gym.Env):
     metadata = {"render_modes": ["human", "ansi"], "render_fps": 4}
 
@@ -33,9 +37,13 @@ class SnakeEnv(gym.Env):
         # 1: HEAD
         # 2: TAIL
         # 3: FOOD
-        self.observation_space = spaces.Tuple(
-            [spaces.Discrete(n=len(States)) for _ in range(size**2)]
+        self.observation_space = spaces.Dict(
+            dict(
+                snake_indices=spaces.Sequence(spaces.Discrete(n=size**2)),
+                food_index=spaces.Discrete(n=size**2),
+            )
         )
+        # spaces.Tuple([spaces.Discrete(n=len(States)) for _ in range(size**2)])
 
         # We have 4 actions, corresponding to "right", "up", "left", "down", "right"
         self.action_space = spaces.Discrete(4)
@@ -66,7 +74,9 @@ class SnakeEnv(gym.Env):
         self.clock = None
 
     def _get_obs(self):
-        return {"agent": self._agent_location, "target": self._target_location}
+        return dict(
+            snake_indices=tuple(self._snake_indices), food_index=self._food_index
+        )
 
     def _get_info(self):
         return {
@@ -79,9 +89,7 @@ class SnakeEnv(gym.Env):
         return np.ravel_multi_index(coordinate.tolist(), dims=[self.size, self.size])
 
     def _i2c(self, index: np.int64) -> NDArray[np.int64]:
-        return np.array(
-            np.unravel_index(index, [self.size, self.size]), dtype=np.int64
-        )
+        return np.array(np.unravel_index(index, [self.size, self.size]), dtype=np.int64)
 
     def _spawn_new_food(self):
         # Choose the food location uniformly at random such that it isn't on top
@@ -89,6 +97,11 @@ class SnakeEnv(gym.Env):
         not_snake = [i for i in range(self.size**2) if i not in self._snake_indices]
         self._food_index: np.int64 = self.np_random.choice(not_snake)
 
+    def _dead_coordinate(self, coordinate: NDArray[np.int64]):
+        return (
+            np.any((coordinate >= self.size) | (coordinate < 0))
+            or self._c2i(coordinate) in self._snake_indices
+        )
 
     def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
@@ -111,12 +124,21 @@ class SnakeEnv(gym.Env):
     def step(self, action):
         # Map the action (element of {0,1,2,3}) to the direction we walk in
         direction = self._action_to_direction[action]
+
         # We use `np.clip` to make sure we don't leave the grid
-        self._agent_location = np.clip(
-            self._agent_location + direction, 0, self.size - 1
-        )
-        # An episode is done iff the agent has reached the target
-        terminated = np.array_equal(self._agent_location, self._target_location)
+        next_head_coordinate = self._i2c(self._snake_indices[0]) + direction
+
+        # TODO: if we allow the agent to run into walls and receive negative
+        # rewards as a result, then the walls need to be in the state space...
+        # otherwise, we need to prevent them from being accessible by either
+        # clipping resulting states or re-drawing actions (not sure if this is
+        # possible). If we just clip states, then it will be possible to get
+        # stuck, and we could introduce a terminal state if stuck for more than
+        # x steps.
+        dead = self._dead_coordinate(next_head_coordinate)
+
+        # An episode is done if the snake has hit a wall, itself, or has won
+        terminated = dead or np.array_equal(self._agent_location, self._target_location)
         reward = 1 if terminated else 0  # Binary sparse rewards
         observation = self._get_obs()
         info = self._get_info()

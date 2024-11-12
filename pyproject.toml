@@ -29,3 +29,4 @@ rlsnakes = { path = ".", editable = true }
 [tool.pixi.dependencies]
 ipython = ">=8.29.0,<9"
 jupyter = ">=1.1.1,<2"
+gymnasium = ">=1.0.0,<2"
