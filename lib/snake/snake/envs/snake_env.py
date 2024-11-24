@@ -17,27 +17,33 @@ class Directions(Enum):
 
 
 class Actions(Enum):
-    TURN_CW = -1
-    STRAIGHT = 0
-    TURN_CCW = 1 
+    RIGHT = 0
+    UP = 1
+    LEFT = 2
+    DOWN = 3
 
 
 class States(Enum):
     EMPTY = 0
-    HEAD = 1
-    TAIL = 2
-    FOOD = 3
-    WALL = 4
+    WALL = 1
+    HEAD = 2
+    TAIL = 3
+    FOOD = 4
 
 
 SYMBOLS = {
-    # TODO: directional + dead head variations
     States.EMPTY: " ",
-    States.HEAD: "@",
+    States.HEAD: {
+        Directions.RIGHT: ">",
+        Directions.LEFT: "<",
+        Directions.UP: "^",
+        Directions.DOWN: "v",
+    },
     States.TAIL: "*",
     States.FOOD: "$",
     States.WALL: "#",
 }
+DEAD_SYMBOL = "x"
 
 Coordinate: TypeAlias = NDArray[np.int64]
 Index: TypeAlias = np.int64
@@ -58,34 +64,31 @@ class SnakeEnv(gym.Env):
         )
         self._playable_indices: IntArray = all_indices[1:-1, 1:-1].flatten()
         self._wall_indices: IntArray = np.setdiff1d(all_indices, self._playable_indices)
+        self._dead = False
 
         # Each square in the grid can be:
-        # 0: EMPTY
-        # 1: HEAD
-        # 2: TAIL
-        # 3: FOOD
-        self.observation_space = spaces.Dict(
-            dict(
-                snake_indices=spaces.Sequence(spaces.Discrete(n=self.full_size**2)),
-                # TODO: should this be limited to playable_size and we convert between indices?
-                food_index=spaces.Discrete(n=self.full_size**2),
-            )
+        num_discrete_values_per_location = np.full_like(all_indices, 5)
+
+        # self.observation_space = spaces.MultiDiscrete(
+        #     nvec=num_discrete_values_per_location,
+        #     dtype=np.uint8,
+        # )
+        self._dtype = np.float32
+        self.observation_space = spaces.Box(
+            low=0,
+            high=4,
+            shape=[self.full_size, self.full_size],
+            dtype=self._dtype,
         )
         # spaces.Tuple([spaces.Discrete(n=len(States)) for _ in range(size**2)])
 
-        # We have 4 actions, corresponding to "right", "up", "left", "down", "right"
+        # We have 3 actions, corresponding to turning left, right, or keeping straight
         self.action_space = spaces.Discrete(len(Actions))
-
-        """
-        The following dictionary maps abstract actions from `self.action_space` to
-        the direction we will walk in if that action is taken.
-        i.e. 0 corresponds to "right", 1 to "up" etc.
-        """
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        self._initialize_blank_board_str_array()
+        self._initialize_blank_board()
 
         """
         If human-rendering is used, `self.window` will be a reference
@@ -97,22 +100,40 @@ class SnakeEnv(gym.Env):
         self.window = None
         self.clock = None
 
+    def _get_board_state(self):
+        board = self._blank_board.copy()
+        board[self._food_index] = States.FOOD.value
+        board[self._snake_indices] = States.TAIL.value
+        board[self._snake_indices[0]] = States.HEAD.value
+
+        self._board = board
+
+        return self._board
+
     def _get_obs(self):
-        return dict(
-            snake_indices=tuple(self._snake_indices), food_index=self._food_index
-        )
+        return self._get_board_state().reshape([self.full_size, self.full_size])
 
     def _get_info(self):
         return {
             "distance": np.linalg.norm(
-                self._i2c(self._food_index) - self._i2c(self._snake_indices[0]), ord=1
+                self._index_to_coordinate(self._food_index)
+                - self._index_to_coordinate(self._snake_indices[0]),
+                ord=1,
             ),
-            "current_direction": Directions(self._current_direction_value),
-            "snake_length": self._snake_length,
+            "current_direction": np.int64(self._current_direction_value),
+            "snake_length": np.int64(self._snake_length),
         }
 
+    # def _action_to_direction(self, action_value: int) -> int:
+    #     return (self._current_direction_value + action_value) % len(Directions)
+
     def _action_to_direction(self, action_value: int) -> int:
-        return (self._current_direction_value + action_value) % len(Directions)
+        # If snake tries to move against its current direction, it just
+        # continues in that direction.
+        # TODO: see what happens if we remove this
+        if (int(action_value) + 2) % 4 == self._current_direction_value:
+            return self._current_direction_value
+        return action_value
 
     def _direction_to_delta(self, direction_value: int):
         return {
@@ -122,17 +143,18 @@ class SnakeEnv(gym.Env):
             Directions.DOWN.value: np.array([1, 0]),
         }[direction_value]
 
-    def _initialize_blank_board_str_array(self):
-        board = np.full(self.full_size**2, SYMBOLS[States.EMPTY])
-        board[self._wall_indices] = SYMBOLS[States.WALL]
-        self._blank_board_str_array = board
+    def _initialize_blank_board(self):
+        board = np.full(self.full_size**2, States.EMPTY.value, dtype=self._dtype)
+        board[self._wall_indices] = States.WALL.value
+        self._blank_board = board
+        self._board = board.copy()
 
-    def _c2i(self, coordinate: Coordinate) -> Index:
+    def _coordinate_to_index(self, coordinate):
         return np.ravel_multi_index(
             coordinate.tolist(), dims=[self.full_size, self.full_size]
         )
 
-    def _i2c(self, index: Index) -> Coordinate:
+    def _index_to_coordinate(self, index: Index) -> Coordinate:
         return np.array(
             np.unravel_index(index, [self.full_size, self.full_size]), dtype=np.int64
         )
@@ -167,30 +189,33 @@ class SnakeEnv(gym.Env):
         # Start the snake in the middle
         initial_coordinate = np.array([self.full_size // 2, self.full_size // 2])
         self._snake_array: IntArray = np.full([self.playable_size**2], -1)
-        self._snake_array[0] = self._c2i(initial_coordinate)
+        self._snake_array[0] = self._coordinate_to_index(initial_coordinate)
         self._snake_length = 1
         self._update_snake_indices()
         # Start the snake in a random direction
-        self._current_direction_value = self.np_random.choice(np.array(Directions)).value
+        self._current_direction_value = self.np_random.choice(
+            np.array(Directions)
+        ).value
 
         self._spawn_new_food()
 
         observation = self._get_obs()
         info = self._get_info()
 
-        self.render()
+        self.render(observation, self._current_direction_value, dead=False)
 
         return observation, info
 
-    def step(self, action_value: int):
+    def step(self, action: int):
         # Map the action to the direction we walk in
-        direction_value = self._action_to_direction(action_value)
+        # RIGHT, UP, LEFT, DOWN
+        direction_value = self._action_to_direction(action)
         self._current_direction_value: int = direction_value
         delta = self._direction_to_delta(direction_value)
 
         # TODO: can optimize this by directly calculating the index
-        next_head_coordinate = self._i2c(self._snake_indices[0]) + delta
-        next_head_index = self._c2i(next_head_coordinate)
+        next_head_coordinate = self._index_to_coordinate(self._snake_indices[0]) + delta
+        next_head_index = self._coordinate_to_index(next_head_coordinate)
 
         # TODO: if we allow the agent to run into walls and receive negative
         # rewards as a result, then the walls need to be in the state space...
@@ -199,8 +224,8 @@ class SnakeEnv(gym.Env):
         # possible). If we just clip states, then it will be possible to get
         # stuck, and we could introduce a terminal state if stuck for more than
         # x steps.
-        dead = self._dead_coordinate(next_head_index)
-        won = self._snake_length == self.playable_size**2
+        self._dead = self._dead_coordinate(next_head_index)
+        self._won = self._snake_length == self.playable_size**2
 
         got_food = next_head_index == self._food_index
         self._step_snake(next_head_index, got_food)
@@ -208,31 +233,56 @@ class SnakeEnv(gym.Env):
             self._spawn_new_food()
 
         # An episode is done if the snake has hit a wall, itself, or has won
-        terminated = dead or won
-        reward = 1 if got_food else -1 if dead else 0  # Binary sparse rewards
+        terminated = self._dead or self._won
+        reward = 1 if got_food else -1 if self._dead else 0  # Binary sparse rewards
         observation = self._get_obs()
         info = self._get_info()
 
-        self.render()
+        self.render(observation, self._current_direction_value, self._dead)
 
         truncated = False
 
         return observation, reward, terminated, truncated, info
 
-    def render(self):
+    def render(self, observation=None, current_direction=None, dead=None):
         if self.render_mode == "ansi":
-            return self._render_as_string()
+            if all([x is not None for x in [observation, current_direction, dead]]):
+                return self._render_as_string(observation, current_direction, dead)
+            else:
+                return self._render_as_string(
+                    self._get_obs(), self._current_direction_value, self._dead
+                )
 
-    def _render_as_string(self):
-        board = self._blank_board_str_array.copy()
-        board[self._food_index] = SYMBOLS[States.FOOD]
-        board[self._snake_indices] = SYMBOLS[States.TAIL]
-        board[self._snake_indices[0]] = SYMBOLS[States.HEAD]
+    @staticmethod
+    def _update_string_board_from_observation(
+        observation_array, string_array, state_value, current_direction, dead
+    ):
+        if state_value == States.HEAD.value:
+            string_array[observation_array == state_value] = SYMBOLS[States.HEAD][
+                Directions(current_direction)
+            ]
+        else:
+            string_array[observation_array == state_value] = SYMBOLS[
+                States(state_value)
+            ]
 
-        return "\n".join(
-            " ".join(char for char in row)
-            for row in board.reshape(self.full_size, self.full_size)
+    @staticmethod
+    def _render_as_string(observation, current_direction, dead):
+        string_board = np.full_like(
+            observation, SYMBOLS[States.EMPTY], dtype=np.dtype("<U1")
         )
+
+        for state_value in np.unique(observation):
+            SnakeEnv._update_string_board_from_observation(
+                observation, string_board, state_value, current_direction, dead
+            )
+
+        if dead:
+            string_board[
+                np.isin(observation, [States.HEAD.value, States.TAIL.value])
+            ] = DEAD_SYMBOL
+
+        return "\n".join(" ".join(char for char in row) for row in string_board)
 
     # def _render_frame(self):
     #     if self.window is None and self.render_mode == "human":

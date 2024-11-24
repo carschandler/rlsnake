@@ -37,7 +37,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/executing-2.1.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/farama-notifications-0.0.4-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/fqdn-1.5.1-pyhd8ed1ab_0.tar.bz2
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/gymnasium-1.0.0-py310h17c5347_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/gymnasium-0.29.1-py310h17c5347_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/h11-0.14.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/h2-4.1.0-pyhd8ed1ab_0.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/hpack-4.0.0-pyh9f0ad1d_0.tar.bz2
@@ -941,12 +941,13 @@ packages:
   sha256: 53df23c8bb1651b12f095df764bfb057935d49537a56de211b098f4c79614bb0
 - kind: conda
   name: gymnasium
-  version: 1.0.0
-  build: py310h17c5347_0
+  version: 0.29.1
+  build: py310h17c5347_1
+  build_number: 1
   subdir: linux-64
-  url: https://conda.anaconda.org/conda-forge/linux-64/gymnasium-1.0.0-py310h17c5347_0.conda
-  sha256: 792da7246704fbf2092d7abc1f471e8345515826f6432f1cf5ace106c6cecc17
-  md5: f448c617e52f07ca87235a2cccf23c69
+  url: https://conda.anaconda.org/conda-forge/linux-64/gymnasium-0.29.1-py310h17c5347_1.conda
+  sha256: 1e806b5c6cf843ef2aab81c4da0a9cff03779ed24e597c091ad936b9987f4778
+  md5: a332cf221b59519e3c56303768da7bc9
   depends:
   - cloudpickle >=1.2.0
   - farama-notifications
@@ -959,8 +960,8 @@ packages:
   license_family: MIT
   purls:
   - pkg:pypi/gymnasium?source=hash-mapping
-  size: 976584
-  timestamp: 1729640679379
+  size: 978033
+  timestamp: 1712294656608
 - kind: conda
   name: h11
   version: 0.14.0
@@ -3154,14 +3155,13 @@ packages:
   name: rlsnakes
   version: 0.1.0
   path: .
-  sha256: edcdae34f84209e8137e77f03d11802809ddb4e1012e5a123acefc6b17943856
+  sha256: 9088912617a238fdba94e4bdae889296e9351e2c7f2385b1f3fc7fe5cec7e633
   requires_dist:
   - torchrl>=0.6.0,<0.7
   - tensordict>=0.6.1,<0.7
   - ipython>=8.29.0
   - jupyter>=1.1.1
   - copier>=9.4.1
-  - gymnasium>=1.0.0
   requires_python: ==3.10.15
   editable: true
 - kind: conda
