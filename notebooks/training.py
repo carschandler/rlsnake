@@ -34,8 +34,8 @@ env.auto_register_info_dict()
 env.reset()
 
 # %%
-# value_net = ConvNet(num_cells=[32, 32, 4])
-# policy = QValueActor(value_net, spec=env.action_spec)
+# value_net = ConvNet(strides=1, kernel_sizes=[3, 3, 2])
+# policy = Seq(QValueActor(value_net, spec=env.action_spec))
 # value_net = DdpgCnnQNet()
 # policy = Actor(
 #     DdpgCnnActor(
@@ -46,8 +46,15 @@ value_net = DuelingCnnDQNet(
     out_features=env.action_spec.shape[-1],
     out_features_value=1,
     cnn_kwargs={
-        "kernel_sizes": [4, 3, 2],
+        "kernel_sizes": [3, 3, 2],
         "strides": 1,
+    },
+    mlp_kwargs={
+        "depth": 2,
+        "num_cells": [
+            64,
+            64,
+        ],
     },
     device=device,
 )
@@ -58,10 +65,12 @@ policy(env.fake_tensordict())
 rollout = env.rollout(max_steps=5, policy=policy)
 
 # %%
+buffer_length = 1_000_000
+
 exploration_module = EGreedyModule(
     env.action_spec,
-    annealing_num_steps=100_000,
-    eps_init=0.9,
+    annealing_num_steps=buffer_length,
+    eps_init=0.1,
     eps_end=0.005,
 )
 
@@ -82,7 +91,7 @@ collector = SyncDataCollector(
     init_random_frames=init_rand_steps,
     device=device,
 )
-rb = ReplayBuffer(storage=LazyTensorStorage(100_000, device=device))
+rb = ReplayBuffer(storage=LazyTensorStorage(buffer_length, device=device))
 
 from torch.optim import Adam
 
@@ -90,7 +99,8 @@ from torch.optim import Adam
 from torchrl.objectives import DQNLoss, SoftUpdate
 
 loss = DQNLoss(value_network=policy, action_space=env.action_spec, delay_value=True)
-optim = Adam(loss.parameters(), lr=0.02)
+loss.make_value_estimator(gamma=0.99)
+optim = Adam(loss.parameters(), lr=0.002)
 updater = SoftUpdate(loss, eps=0.99)
 
 # %%
@@ -98,8 +108,8 @@ from torchrl._utils import logger as torchrl_logger
 from torchrl.record import CSVLogger
 import time
 
-path = "./training_loop"
-logger = CSVLogger(exp_name="dqn", log_dir=path, video_format="mp4")
+path = "./training_loop2"
+logger = CSVLogger(exp_name="dqn", log_dir=path)
 
 # %%
 total_count = 0
@@ -123,14 +133,20 @@ for i, data in enumerate(collector):
             exploration_module.step(data.numel())
             # Update target params
             updater.step()
-            if i % 100:
-                torchrl_logger.info(
-                    f"Max snake length: {max_snake_length}, Max steps:"
-                    f" {max_step_count}, rb length {len(rb)}"
-                )
+            if i % 1000:
+                # torchrl_logger.info(
+                #     f"Max snake length: {max_snake_length}, Max steps:"
+                #     f" {max_step_count}, rb length {len(rb)}"
+                # )
+                if i % 10000:
+                    logger.log_scalar("max_score", max_snake_length)
+                    logger.log_scalar("max_steps", max_step_count)
+                    logger.log_scalar("total_count", total_count)
+                    logger.log_scalar("total_episodes", total_episodes)
+
             total_count += data.numel()
             total_episodes += data["next", "done"].sum()
-    if max_snake_length > 10:
+    if max_snake_length == 25:
         break
 
 t1 = time.time()
@@ -138,5 +154,3 @@ t1 = time.time()
 torchrl_logger.info(
     f"solved after {total_count} steps, {total_episodes} episodes and in {t1-t0}s."
 )
-
-# %%
