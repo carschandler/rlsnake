@@ -1,30 +1,32 @@
 # %%
 import torch
-from tensordict.nn import TensorDictModule as Mod, TensorDictSequential as Seq
+from snake.envs import SnakeEnv
+from tensordict.nn import TensorDictModule as Mod
+from tensordict.nn import TensorDictSequential as Seq
 from torchrl.envs import (
-    GymEnv,
-    TransformedEnv,
     FlattenObservation,
-    UnsqueezeTransform,
+    GymEnv,
     StepCounter,
+    TransformedEnv,
+    UnsqueezeTransform,
 )
 from torchrl.modules import (
-    ConvNet,
-    Actor,
     MLP,
-    QValueActor,
-    EGreedyModule,
+    Actor,
+    ConvNet,
     DdpgCnnActor,
     DdpgCnnQNet,
     DuelingCnnDQNet,
+    EGreedyModule,
+    QValueActor,
 )
-from snake.envs import SnakeEnv
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
 # %%
-env = GymEnv("snake/Snake-v0")
+size = 5
+env = GymEnv("snake/Snake-v0", size=size)
 env = TransformedEnv(env, UnsqueezeTransform(-3, in_keys=["observation"]))
 env = TransformedEnv(env, StepCounter())
 env.auto_register_info_dict()
@@ -65,7 +67,7 @@ policy(env.fake_tensordict())
 rollout = env.rollout(max_steps=5, policy=policy)
 
 # %%
-buffer_length = 1_000_000
+buffer_length = 10_000_000
 
 exploration_module = EGreedyModule(
     env.action_spec,
@@ -103,12 +105,13 @@ loss.make_value_estimator(gamma=0.99)
 optim = Adam(loss.parameters(), lr=0.002)
 updater = SoftUpdate(loss, eps=0.99)
 
+import time
+
 # %%
 from torchrl._utils import logger as torchrl_logger
 from torchrl.record import CSVLogger
-import time
 
-path = "./training_loop2"
+path = "./output/training_5x5"
 logger = CSVLogger(exp_name="dqn", log_dir=path)
 
 # %%
@@ -138,7 +141,7 @@ for i, data in enumerate(collector):
                 #     f"Max snake length: {max_snake_length}, Max steps:"
                 #     f" {max_step_count}, rb length {len(rb)}"
                 # )
-                if i % 10000:
+                if i % 100000:
                     logger.log_scalar("max_score", max_snake_length)
                     logger.log_scalar("max_steps", max_step_count)
                     logger.log_scalar("total_count", total_count)
@@ -146,7 +149,7 @@ for i, data in enumerate(collector):
 
             total_count += data.numel()
             total_episodes += data["next", "done"].sum()
-    if max_snake_length == 25:
+    if max_snake_length == 100:
         break
 
 t1 = time.time()
