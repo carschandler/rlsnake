@@ -21,6 +21,8 @@ from torchrl.modules import (
     QValueActor,
 )
 
+import render_asciinema
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
@@ -118,11 +120,29 @@ logger = CSVLogger(exp_name="dqn", log_dir=path)
 total_count = 0
 total_episodes = 0
 t0 = time.time()
+prev_max = 0
 for i, data in enumerate(collector):
     # Write data in replay buffer
     rb.extend(data)
     max_step_count = rb[:]["next", "step_count"].max()
     max_snake_length = rb[:]["next", "snake_length"].max()
+
+    if max_snake_length > prev_max and max_snake_length > 5:
+        prev_max = max_snake_length
+
+        i_max = rb["next", "snake_length"].argmax()
+        i_start = rb["next", "terminated"][:i_max].argwhere()[-1][0] + 1
+        i_end = i_max + rb["next", "terminated"][i_max:].argwhere()[0, 0]
+
+        trajectory = rb["next"][i_start : i_end + 1]
+
+        render_asciinema.render_observations(
+            trajectory["observation"],
+            trajectory["current_direction"],
+            trajectory["terminated"],
+            f"{path}/dqn/videos/snake_length_{max_snake_length}.cast",
+        )
+
     if len(rb) > init_rand_steps:
         # Optim loop (we do several optim steps
         # per batch collected for efficiency)
