@@ -1,0 +1,19 @@
+name: rlsnakes
+services:
+    rlsnakes:
+        devices:
+            - nvidia.com/gpu=all
+        volumes:
+        - type: bind
+          source: ./lib
+          target: /workspace/lib
+        - type: bind
+          source: ./notebooks
+          target: /workspace/notebooks
+        - type: bind
+          source: ./scripts
+          target: /workspace/scripts
+        env_file: .env
+        stdin_open: true
+        tty: true
+        image: rlsnakes

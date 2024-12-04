@@ -138,6 +138,7 @@ dependencies:
   - typing_extensions=4.12.2
   - tzdata=2024b
   - urllib3=2.2.3
+  - wandb=0.18.7
   - wcwidth=0.2.13
   - wheel=0.44.0
   - xz=5.2.6

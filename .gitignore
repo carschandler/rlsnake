@@ -1,4 +1,6 @@
+wandb
 output
+docker_only/env
 
 # pixi environments
 .pixi
