@@ -202,16 +202,29 @@ import time
 
 # %%
 from torchrl._utils import logger as torchrl_logger
-from torchrl.record import WandbLogger
 
 path = Path("./output")
-logger = WandbLogger(
-    project="rlsnakes",
-    exp_name=args.exp_name,
-    offline=args.offline,
-    tags=["duelingdqn"] + args.tags,
-    config=args,
-)
+
+try:
+    print(
+        "Attempting to integrate with wandb; dismiss the following messages if you have"
+        " not set it up."
+    )
+    from torchrl.record import WandbLogger
+
+    logger = WandbLogger(
+        project="rlsnakes",
+        exp_name=args.exp_name,
+        offline=args.offline,
+        tags=["duelingdqn"] + args.tags,
+        config=args,
+    )
+except Exception:
+    print("wandb unavailable; falling back to CSV logging.")
+    from torchrl.record import CSVLogger
+
+    logger = CSVLogger(exp_name=args.exp_name, log_dir=str(path))
+    logger.log_hparams(vars(args))
 
 # %%
 total_count = 0
@@ -243,8 +256,8 @@ for i, data in enumerate(collector):
             )
 
         print(
-            f"New max of {max_snake_length}; rb = {len(rb):,}/{args.buffer_length:,}; eps"
-            f" = {exploration_module.eps}"
+            f"New max of {max_snake_length}; rb = {len(rb):,}/{args.buffer_length:,};"
+            f" eps = {exploration_module.eps}"
         )
         prev_max = max_snake_length
 
