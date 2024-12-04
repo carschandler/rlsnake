@@ -37,7 +37,7 @@ docker compose run rlsnakes
 Once inside, use `python notebooks/training.py` to run RL training. Results will
 populate into the `wandb` instance you set up above.
 
-The directories `./lib`, `./notebooks`, and `./scripts` have been added as
+The directories `./lib ./notebooks ./scripts ./output` have been added as
 bind-mounts in the docker-compose file, meaning you can edit them on your host
 system and the changes will be reflected live in the docker image. Feel free to
 update `docker-compose.yaml` with more if needed.

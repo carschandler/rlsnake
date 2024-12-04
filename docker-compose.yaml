@@ -13,6 +13,9 @@ services:
         - type: bind
           source: ./scripts
           target: /workspace/scripts
+        - type: bind
+          source: ./output
+          target: /workspace/output
         env_file: .env
         stdin_open: true
         tty: true
