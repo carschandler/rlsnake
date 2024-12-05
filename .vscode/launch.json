@@ -16,6 +16,10 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/notebooks/training.py",
+            "args": [
+                "debug",
+                "--offline"
+            ],
             "console": "integratedTerminal"
         }
     ]
