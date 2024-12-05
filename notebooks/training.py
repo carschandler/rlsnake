@@ -124,7 +124,7 @@ args = parser.parse_args()
 
 # %%
 env = GymEnv("snake/Snake-v0", size=args.board_size)
-env = TransformedEnv(env, UnsqueezeTransform(-3, in_keys=["observation"]))
+env = TransformedEnv(env, UnsqueezeTransform(-4, in_keys=["observation"]))
 env = TransformedEnv(env, StepCounter(max_steps=args.max_episode_steps))
 env.auto_register_info_dict()
 
