@@ -167,7 +167,7 @@ class SnakeBase(gym.Env):
     def _update_snake_indices(self):
         self._snake_indices = self._snake_array[: self._snake_length]
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed=None, options=None): # type: ignore
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
@@ -261,7 +261,7 @@ class SnakeBase(gym.Env):
         )
 
         for state_value in np.unique(board):
-            SnakeGrid._update_string_board_from_observation(
+            SnakeBase._update_string_board_from_observation(
                 board, string_board, state_value, current_direction
             )
 
