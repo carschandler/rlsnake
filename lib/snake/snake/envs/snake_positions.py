@@ -45,8 +45,8 @@ class SnakePositions(SnakeBase):
         food = food_coord - head_coord
 
         return {
-            "nearest_danger": nearest_danger,
-            "food": food,
+            "nearest_danger": nearest_danger.astype(np.float32),
+            "food": food.astype(np.float32),
         }
 
     def get_info(self):

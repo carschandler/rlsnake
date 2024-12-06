@@ -4,7 +4,7 @@ from pathlib import Path
 
 import cli
 import torch
-from snake.envs import SnakeGrid
+from snake.envs import SnakeGridDiscrete
 from snake.render.asciinema import render_trajectory
 from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential as Seq
@@ -186,6 +186,7 @@ for i, data in enumerate(collector):
 
         render_trajectory(
             str(video_dir / f"snake_length_{max_snake_length}.cast"),
+            SnakeGridDiscrete._render_as_string_onehot,
             tensordict=trajectory.cpu(),
         )
 

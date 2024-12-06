@@ -55,8 +55,8 @@ class SnakeSurroundings(SnakeBase):
             food[3] = 1
 
         return {
-            "danger": danger,
-            "food": food,
+            "danger": danger.astype(np.float32),
+            "food": food.astype(np.float32),
         }
 
     def get_info(self):
