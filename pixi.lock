@@ -3411,7 +3411,7 @@ packages:
   name: snake
   version: 0.0.1
   path: lib/snake
-  sha256: e9458157dfd6fde68ef9a1e22dd7a1f72174d6d829e936bfd05aac2ec783fa64
+  sha256: 38e5a7e89066a4218ef2fd0182820aabd585a1f559fe91fdd0bca2c4f32ba253
   requires_dist:
   - gymnasium
   editable: true

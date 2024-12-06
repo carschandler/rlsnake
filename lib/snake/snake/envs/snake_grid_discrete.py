@@ -1,7 +1,8 @@
 import numpy as np
 from gymnasium.spaces import MultiDiscrete
 
-from .snake_grid import SnakeGrid, States
+from .snake_base import States
+from .snake_grid import SnakeGrid
 
 
 class SnakeGridDiscrete(SnakeGrid):

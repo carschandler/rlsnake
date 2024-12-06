@@ -1,8 +1,8 @@
-import gymnasium, snake
-from snake.envs.snake_env import Actions, Directions
-from snake.envs import SnakeEnv
+import gymnasium
+import snake
+from snake.envs.snake_grid import Actions
 
-env = gymnasium.make("snake/Snake-v0", render_mode="ansi")
+env = gymnasium.make("snake/SnakeGrid", render_mode="ansi")
 
 obs, info = env.reset()
 
@@ -14,8 +14,6 @@ def r():
 
 
 r()
-
-se = SnakeEnv()
 
 # text_to_action = dict(
 #     cw=Actions.TURN_CW,
