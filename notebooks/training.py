@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 
 import torch
-from snake.envs import SnakeEnv
+from snake.envs import SnakeGrid
 from snake.render.asciinema import render_trajectory
 from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential as Seq
