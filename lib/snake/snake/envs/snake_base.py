@@ -213,10 +213,12 @@ class SnakeBase(gym.Env):
         # stuck, and we could introduce a terminal state if stuck for more than
         # x steps.
         self.dead = self.dead_index(next_head_index)
-        self.won = self._snake_length == self.playable_size**2
 
         got_food = next_head_index == self._food_index
         self._step_snake(next_head_index, got_food)
+
+        self.won = self._snake_length == self.playable_size**2
+
         if got_food and not self.won:
             self._spawn_new_food()
 
