@@ -64,7 +64,7 @@ def parse_args():
         "-e",
         nargs=2,
         type=float,
-        default=[0.9, 0.05],
+        default=[0.7, 0],
         help=(
             "Start and end values for the epsilon to use in the epsilon-greedy"
             " exploration module. Controls exploration vs. exploitation during"

@@ -2,17 +2,21 @@
 import argparse
 from pathlib import Path
 
+import cli
 import torch
 from snake.envs import SnakeGrid
 from snake.render.asciinema import render_trajectory
+from tensordict import TensorDict
 from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential as Seq
 from torchrl.envs import (
+    ExplorationType,
     FlattenObservation,
     GymEnv,
     StepCounter,
     TransformedEnv,
     UnsqueezeTransform,
+    set_exploration_type,
 )
 from torchrl.modules import (
     MLP,
@@ -25,8 +29,6 @@ from torchrl.modules import (
     QValueActor,
 )
 
-from . import cli
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
@@ -34,7 +36,7 @@ torch.set_default_device(device)
 args = cli.parse_args()
 
 # %%
-env = GymEnv("snake/Snake-v0", size=args.board_size)
+env = GymEnv("snake/SnakeGrid", size=args.board_size, render_mode="ansi")
 env = TransformedEnv(env, UnsqueezeTransform(-3, in_keys=["observation"]))
 env = TransformedEnv(env, StepCounter(max_steps=args.max_episode_steps))
 env.auto_register_info_dict()
@@ -127,7 +129,7 @@ try:
         project="rlsnakes",
         exp_name=args.exp_name,
         offline=args.offline,
-        tags=["duelingdqn"] + args.tags,
+        tags=["duelingdqn", "grid"] + args.tags,
         config=args,
     )
 except Exception:
@@ -138,52 +140,17 @@ except Exception:
     logger.log_hparams(vars(args))
 
 # %%
-total_count = 0
+total_steps_in_training = 0
 total_episodes = 0
 t0 = time.time()
 prev_max = 0
 for i, data in enumerate(collector):
+    print(i, len(rb), prev_max)
     # Write data in replay buffer
     rb.extend(data)
 
-    max_step_count = rb[:]["next", "step_count"].max()
-    max_snake_length = rb[:]["next", "snake_length"].max()
-
-    if max_snake_length > prev_max and max_snake_length > 5:
-        i_max = rb["next", "snake_length"].argmax()
-        i_start = rb["next", "done"][:i_max].argwhere()[-1][0] + 1
-        i_end = i_max + rb["next", "done"][i_max:].argwhere()
-        if i_end.numel == 0:
-            # We haven't gotten to the end of this trajectory yet; keep going
-            # until we do
-            continue
-
-        i_end = i_end[0, 0]
-
-        if rb["next", "truncated"][i_end].item():
-            print(
-                "Warning: the trajectory which yielded a max score of"
-                f" {max_snake_length} was truncated at {args.max_episode_steps} steps."
-            )
-
-        print(
-            f"New max of {max_snake_length}; rb = {len(rb):,}/{args.buffer_length:,};"
-            f" eps = {exploration_module.eps}"
-        )
-        prev_max = max_snake_length
-
-        trajectory = rb["next"][i_start : i_end + 1]
-
-        video_dir = path / args.exp_name / "videos"
-
-        video_dir.mkdir(parents=True, exist_ok=True)
-
-        render_trajectory(
-            str(video_dir / f"snake_length_{max_snake_length}.cast"),
-            tensordict=trajectory.cpu(),
-        )
-
-        # logger.log_video(f"max_snake_length_{max_snake_length}", )
+    total_steps_in_training += data.numel()
+    total_episodes += data["next", "done"].sum()
 
     if len(rb) > args.init_rand_steps:
         # Optim loop (we do several optim steps
@@ -199,20 +166,107 @@ for i, data in enumerate(collector):
             exploration_module.step(data.numel())
             # Update target params
             updater.step()
-            if i % 10000:
-                logger.log_scalar("max_score", max_snake_length)
-                logger.log_scalar("max_steps", max_step_count)
-                logger.log_scalar("total_count", total_count)
-                logger.log_scalar("total_episodes", total_episodes)
+        if i % 10 == 0:
+            with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
+                rollout: TensorDict = env.rollout(10000, policy_explore) # type: ignore
+                max_snake_length = rollout["next", "snake_length"].max()
+                max_step_count = rollout["next", "step_count"].max()
+                print(max_snake_length, len(rollout))
+
+                logger.log_scalar("Episode Score", max_snake_length)
+                logger.log_scalar("Steps in Episode", max_step_count)
+                logger.log_scalar("Total Training Steps", total_steps_in_training)
+                logger.log_scalar("Total Episodes", total_episodes)
                 logger.log_scalar("epsilon", exploration_module.eps)
 
-            total_count += data.numel()
-            total_episodes += data["next", "done"].sum()
-    if max_snake_length == 100:
+                env.reset()
+
+                if max_snake_length > prev_max and max_snake_length > 5:
+                    # i_max = rollout["next", "snake_length"].argmax()
+                    # i_start = rollout["next", "done"][:i_max].argwhere()[-1][0] + 1
+                    # i_start = rollout["next", "done"][:i_max].argwhere()[-1][0] + 1
+                    # i_end = i_max + rollout["next", "done"][i_max:].argwhere()
+                    # if i_end.numel() == 0:
+                    #     # We haven't gotten to the end of this trajectory yet; keep going
+                    #     # until we do
+                    #     continue
+                    #
+                    # i_end = i_end[0, 0]
+                    #
+                    # if rollout["next", "truncated"][i_end].item():
+                    #     print(
+                    #         "Warning: the trajectory which yielded a max score of"
+                    #         f" {max_snake_length} was truncated at {args.max_episode_steps} steps."
+                    #     )
+                    logger.log_scalar("Overall Max Score", max_snake_length)
+
+                    print(
+                        f"New max of {max_snake_length}; rb = {len(rb):,}/{args.buffer_length:,};"
+                        f" eps = {exploration_module.eps}"
+                    )
+                    prev_max = max_snake_length
+
+                    # trajectory = rollout["next"][i_start : i_end + 1]
+                    trajectory = rollout["next"]
+
+                    video_dir = path / args.exp_name / "videos"
+
+                    video_dir.mkdir(parents=True, exist_ok=True)
+
+                    render_trajectory(
+                        str(video_dir / f"snake_length_{max_snake_length}.cast"),
+                        SnakeGrid._render_as_string,
+                        tensordict=trajectory.cpu(),
+                    )
+
+
+    # if max_snake_length == 100:
+    if len(rb) >= args.buffer_length:
         break
+
 
 t1 = time.time()
 
 torchrl_logger.info(
-    f"solved after {total_count} steps, {total_episodes} episodes and in {t1-t0}s."
+    f"done after {total_steps_in_training} steps, {total_episodes} episodes and in {t1-t0}s."
+)
+
+final_rollout = env.rollout(max_steps=10000, break_when_any_done=False) # type: ignore
+
+final_max_snake_length = final_rollout["next", "snake_length"].max()
+
+if final_max_snake_length > prev_max:
+    logger.log_scalar("Overall Max Score", final_max_snake_length)
+    max_snake_length = final_max_snake_length
+
+i_max = final_rollout["next", "snake_length"].argmax()
+i_start = final_rollout["next", "done"][:i_max].argwhere()
+if i_start.numel() == 0:
+    i_start = 0
+else:
+    i_start = i_start[-1][0] + 1
+i_end = i_max + final_rollout["next", "done"][i_max:].argwhere()
+if i_end.numel() == 0:
+    i_end = -1
+else:
+    i_end = i_end[0, 0]
+
+trajectory = final_rollout["next"][i_start : i_end + 1]
+
+video_dir = path / args.exp_name / "videos"
+
+video_dir.mkdir(parents=True, exist_ok=True)
+
+render_trajectory(
+    str(video_dir / f"max_final_{final_max_snake_length}.cast"),
+    SnakeGrid._render_as_string,
+    tensordict=trajectory.cpu(),
+)
+
+torchrl_logger.info(
+    f"Final rollout max score: {final_max_snake_length} in {len(trajectory)} steps"
+)
+
+torchrl_logger.info(
+    f"Overall max score: {prev_max}"
 )

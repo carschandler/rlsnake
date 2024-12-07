@@ -5,7 +5,7 @@ from .snake_base import SnakeBase
 
 
 class SnakeGrid(SnakeBase):
-    def __init__(self, render_mode=None, size=5, dtype=np.int32):
+    def __init__(self, render_mode=None, size=5, dtype=np.float32):
         super().__init__(render_mode, size, dtype)
 
         self.observation_space = spaces.Box(

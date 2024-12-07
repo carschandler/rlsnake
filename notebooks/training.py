@@ -89,7 +89,7 @@ parser.add_argument(
     "-e",
     nargs=2,
     type=float,
-    default=[0.9, 0.05],
+    default=[0.7, 0.00],
     help=(
         "Start and end values for the epsilon to use in the epsilon-greedy exploration"
         " module. Controls exploration vs. exploitation during training. Pass the high"
@@ -123,7 +123,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 # %%
-env = GymEnv("snake/Snake-v0", size=args.board_size)
+env = GymEnv("snake/SnakeGrid", size=args.board_size)
 env = TransformedEnv(env, UnsqueezeTransform(-3, in_keys=["observation"]))
 env = TransformedEnv(env, StepCounter(max_steps=args.max_episode_steps))
 env.auto_register_info_dict()
@@ -269,6 +269,7 @@ for i, data in enumerate(collector):
 
         render_trajectory(
             str(video_dir / f"snake_length_{max_snake_length}.cast"),
+            SnakeGrid._render_as_string,
             tensordict=trajectory.cpu(),
         )
 
