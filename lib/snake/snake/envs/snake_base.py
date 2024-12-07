@@ -67,9 +67,10 @@ class SnakeBase(gym.Env):
             self.all_indices, self.playable_indices
         )
         self.dead = False
+        self.won = False
 
         self.dtype = dtype
-        self.observation_space = spaces.Box(0, 1)  # FIXME
+        self.observation_space = spaces.Box(0, 1)  # FIXME override this in child classes
 
         # We have 3 actions, corresponding to turning left, right, or keeping straight
         self.action_space = spaces.Discrete(len(Actions))
@@ -100,7 +101,7 @@ class SnakeBase(gym.Env):
         return self._board
 
     def get_obs(self) -> Any:
-        return None  # FIXME
+        return None  # FIXME override this in child classes
 
     def get_info(self) -> dict[str, Any]:
         return {
@@ -111,6 +112,7 @@ class SnakeBase(gym.Env):
             ),
             "current_direction": np.int64(self.current_direction_value),
             "snake_length": np.int64(self._snake_length),
+            "won": np.bool_(self.won),
         }
 
     def _action_to_direction(self, action_value: int) -> int:
@@ -211,15 +213,15 @@ class SnakeBase(gym.Env):
         # stuck, and we could introduce a terminal state if stuck for more than
         # x steps.
         self.dead = self.dead_index(next_head_index)
-        self._won = self._snake_length == self.playable_size**2
+        self.won = self._snake_length == self.playable_size**2
 
         got_food = next_head_index == self._food_index
         self._step_snake(next_head_index, got_food)
-        if got_food:
+        if got_food and not self.won:
             self._spawn_new_food()
 
         # An episode is done if the snake has hit a wall, itself, or has won
-        terminated = self.dead or self._won
+        terminated = self.dead or self.won
         reward = 1 if got_food else -5 if self.dead else 0  # Binary sparse rewards
         observation = self.get_obs()
         info = self.get_info()
@@ -230,32 +232,34 @@ class SnakeBase(gym.Env):
 
         return observation, reward, terminated, truncated, info
 
-    def render(self, board=None, current_direction=None, dead=None):
+    def render(self, board=None, current_direction=None, dead=None, won=None):
         if board is None:
             board = self._get_board_state().reshape([self.full_size, self.full_size])
         if current_direction is None:
             current_direction = self.current_direction_value
         if dead is None:
             dead = self.dead
+        if won is None:
+            won = self.won
 
         if self.render_mode == "ansi":
-            return self._render_as_string(board, current_direction, dead)
+            return self._render_as_string(board, current_direction, dead, won)
 
     @staticmethod
     def _update_string_board_from_observation(
-        observation_array, string_array, state_value, current_direction
+        board, string_array, state_value, current_direction
     ):
         if state_value == States.HEAD.value:
-            string_array[observation_array == state_value] = SYMBOLS[States.HEAD][
+            string_array[board == state_value] = SYMBOLS[States.HEAD][
                 Directions(current_direction)
             ]
         else:
-            string_array[observation_array == state_value] = SYMBOLS[
+            string_array[board == state_value] = SYMBOLS[
                 States(state_value)
             ]
 
     @staticmethod
-    def _render_as_string(board, current_direction, dead):
+    def _render_as_string(board, current_direction, dead=False, won=False):
         string_board = np.full_like(
             board, SYMBOLS[States.EMPTY], dtype=np.dtype("<U1")
         )
@@ -269,5 +273,7 @@ class SnakeBase(gym.Env):
             string_board[
                 np.isin(board, [States.HEAD.value, States.TAIL.value])
             ] = DEAD_SYMBOL
+        elif won:
+            string_board[1:-1, 1:-1] = SYMBOLS[States.FOOD]
 
         return "\n".join(" ".join(char for char in row) for row in string_board)

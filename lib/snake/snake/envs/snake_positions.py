@@ -29,6 +29,13 @@ class SnakePositions(SnakeBase):
 
     def get_obs(self):  # type: ignore
         nearest_danger = np.zeros(4)
+        food = np.zeros(2)
+
+        if self.dead:
+            return {
+                "nearest_danger": nearest_danger.astype(np.float32),
+                "food": food.astype(np.float32),
+            }
 
         head_coord = self._index_to_coordinate(self._snake_indices[0])
         differences = np.array([[0, 1], [-1, 0], [0, -1], [1, 0]])

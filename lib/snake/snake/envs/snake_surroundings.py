@@ -22,6 +22,12 @@ class SnakeSurroundings(SnakeBase):
         danger = np.zeros(8)
         food = np.zeros(4)
 
+        if self.dead:
+            return {
+                "danger": danger.astype(np.float32),
+                "food": food.astype(np.float32),
+            }
+
         head_coord = self._index_to_coordinate(self._snake_indices[0])
         for i, relative_position in enumerate(
             [

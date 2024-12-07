@@ -22,13 +22,15 @@ def parse_args():
             " the web UI."
         ),
     )
+
     parser.add_argument(
         "--gamma",
         "-g",
-        default=0.99,
+        default=0.995,
         type=float,
         help="Discount factor to use in the return/value function calculations.",
     )
+
     parser.add_argument("--board-size", "-s", default=5, help="Playable board size.")
     parser.add_argument(
         "--max-episode-steps",
@@ -40,17 +42,9 @@ def parse_args():
     parser.add_argument(
         "--adam-learning-rate",
         "-L",
-        default=0.002,
+        default=3e-4,
         type=float,
         help="The learning rate to use in the ADAM optimizer.",
-    )
-    parser.add_argument(
-        "--kernel-sizes",
-        "-k",
-        nargs=3,
-        type=int,
-        default=[3, 3, 2],
-        help="Kernel sizes to use in the CNN layers.",
     )
     parser.add_argument(
         "--buffer-length",
@@ -64,22 +58,12 @@ def parse_args():
         "-e",
         nargs=2,
         type=float,
-        default=[0.7, 0.0],
+        default=[0.2, 0.0],
         help=(
             "Start and end values for the epsilon to use in the epsilon-greedy"
             " exploration module. Controls exploration vs. exploitation during"
             " training. Pass the high (starting) value first followed by the low (end)"
             " value."
-        ),
-    )
-    parser.add_argument(
-        "--init-rand-steps",
-        "-r",
-        default=5000,
-        type=int,
-        help=(
-            "How many random steps should be taken before engaging the exploration"
-            " module."
         ),
     )
     parser.add_argument(
@@ -89,10 +73,30 @@ def parse_args():
         type=int,
         help="How many steps to take in each batch from the data collector.",
     )
+
+    parser.add_argument(
+        "--total-steps",
+        "-T",
+        default=1_000_000,
+        type=int,
+        help="How many total steps to take.",
+    )
+
+    parser.add_argument(
+        "--annealing-steps",
+        "-a",
+        default=1_000_000,
+        type=int,
+        help=(
+            "How many steps it should take to go from the higher epsilon to lower"
+            " epsilon value for the exploration module."
+        ),
+    )
+
     parser.add_argument(
         "--optim-steps",
         "-S",
-        default=10,
+        default=16,
         type=int,
         help="How many passes of the optimizer to make during each batch sample",
     )

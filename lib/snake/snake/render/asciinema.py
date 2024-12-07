@@ -8,19 +8,24 @@ def render_trajectory(
     observations=None,
     directions=None,
     done=None,
+    won=None,
     snake_lengths=None,
     fps=5,
 ):
     with open(filepath, "w") as f:
         if tensordict is not None:
-            observations = tensordict["observation"]
+            observations = tensordict[
+                "board" if "board" in tensordict else "observation"
+            ]
             directions = tensordict["current_direction"]
             done = tensordict["done"]
+            won = tensordict["won"]
             snake_lengths = tensordict["snake_length"]
 
         assert observations is not None
         assert directions is not None
         assert done is not None
+        assert won is not None
 
         shape = observations.shape
         width = shape[-1] * 2 - 1
@@ -41,14 +46,14 @@ def render_trajectory(
             rf' {observations.shape[-2]}, "timestamp": {int(time.time())}}}' + "\n"
         )
         t = 0
-        for i, (observation, direction, done) in enumerate(
-            zip(observations, directions, done)
+        for i, (observation, direction, done, won) in enumerate(
+            zip(observations, directions, done, won)
         ):
             t += 1 / fps
             snake_length = None if snake_lengths is None else snake_lengths[i].item()
 
             board_string = string_renderer(
-                observation.squeeze(), direction.item(), done.item()
+                observation.squeeze(), direction.item(), done.item(), won.item()
             )
             board_string = board_string.replace("\n", r"\r\n")
             f.write(

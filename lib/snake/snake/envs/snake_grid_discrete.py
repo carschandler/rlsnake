@@ -19,9 +19,9 @@ class SnakeGridDiscrete(SnakeGrid):
         )
 
     @staticmethod
-    def _render_as_string_onehot(observation, current_direction, dead):
+    def _render_as_string_onehot(observation, current_direction, dead=False, won=False):
         obs_2d = np.full(observation.shape[-2:], States.EMPTY.value)
         for state_val, state_mask in enumerate(observation):
             obs_2d[np.asarray(state_mask, dtype=bool)] = state_val
 
-        return SnakeGrid._render_as_string(obs_2d, current_direction, dead)
+        return SnakeGrid._render_as_string(obs_2d, current_direction, dead, won)
