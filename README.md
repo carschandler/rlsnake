@@ -54,7 +54,7 @@ From here, you can use `pixi run python` to access the environment's python
 command, or you can drop into an interactive shell using `pixi shell` and just
 use `python` inside the shell.
 
-### Weights and Biases (wandb)
+#### Weights and Biases (wandb)
 
 *Note: this step is optional, and the code should switch over to logging output
 via CSV files if it cannot connect to wandb.*
@@ -62,12 +62,14 @@ via CSV files if it cannot connect to wandb.*
 Results can be logged to a project on Weights and Biases, which will
 automatically track training progress and generate plots.
 
-To connect to a wandb project, create a file called `.env` in the root of the
+First, you will need to create a project called "rlsnake" on your wandb account.
+
+To connect to the wandb project, create a file called `.env` in the root of the
 repo. Enter the following lines into it:
 
 ```
 WANDB_ENTITY=<wandb-team-name>
-WANDB_PROJECT=<wandb-project-name>
+WANDB_PROJECT=rlsnake
 WANDB_BASE_URL=https://api.wandb.ai
 WANDB_API_KEY=<wandb-api-key>
 ```

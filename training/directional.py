@@ -2,7 +2,7 @@
 import argparse
 from pathlib import Path
 
-import cli_surroundings
+import cli_directional
 import numpy as np
 import torch
 from snake.envs import SnakeGrid
@@ -36,7 +36,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
 # %%
-args = cli_surroundings.parse_args()
+args = cli_directional.parse_args()
 
 # %%
 env = GymEnv("snake/SnakeSurroundings", size=args.board_size, render_mode="ansi")
