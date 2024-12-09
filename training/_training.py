@@ -2,18 +2,15 @@
 import argparse
 from pathlib import Path
 
-import cli
 import torch
-from snake.envs import SnakeGridDiscrete
+from snake.envs import SnakeGrid
 from snake.render.asciinema import render_trajectory
 from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential as Seq
 from torchrl.envs import (
-    Compose,
-    DTypeCastTransform,
+    EnvBase,
     FlattenObservation,
     GymEnv,
-    PermuteTransform,
     StepCounter,
     TransformedEnv,
     UnsqueezeTransform,
@@ -29,6 +26,8 @@ from torchrl.modules import (
     QValueActor,
 )
 
+from rlsnakes import cli
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
@@ -36,13 +35,9 @@ torch.set_default_device(device)
 args = cli.parse_args()
 
 # %%
-env = GymEnv("snake/SnakeGridDiscrete", size=args.board_size)
-transforms = Compose(
-    StepCounter(max_steps=args.max_episode_steps),
-    DTypeCastTransform(torch.int64, torch.float32, in_keys="observation"),
-    PermuteTransform(dims=[-1, -3, -2], in_keys="observation"),
-)
-env = TransformedEnv(env, transforms)
+env = GymEnv("snake/SnakeGrid", size=args.board_size)
+env = TransformedEnv(env, UnsqueezeTransform(-3, in_keys=["observation"]))
+env = TransformedEnv(env, StepCounter(max_steps=args.max_episode_steps))
 env.auto_register_info_dict()
 
 # %%
@@ -78,8 +73,17 @@ value_net = DuelingCnnDQNet(
 policy = QValueActor(value_net, spec=env.action_spec)
 policy(env.fake_tensordict())
 
+# %%
+class Trainer():
+    def __init__(self, args: argparse.Namespace, env: EnvBase, policy: Mod) -> None:
+        self.args = args
+        self.env = env
+        self.policy = policy
 
-rollout = env.rollout(max_steps=5, policy=policy)
+train = Trainer(args, env, policy)
+
+# %%
+rollout = train.env.rollout(max_steps=5, policy=train.policy)
 
 # %%
 exploration_module = EGreedyModule(
@@ -130,7 +134,7 @@ try:
     from torchrl.record import WandbLogger
 
     logger = WandbLogger(
-        project="rlsnakes",
+        project="rlsnake",
         exp_name=args.exp_name,
         offline=args.offline,
         tags=["duelingdqn"] + args.tags,
@@ -186,7 +190,7 @@ for i, data in enumerate(collector):
 
         render_trajectory(
             str(video_dir / f"snake_length_{max_snake_length}.cast"),
-            SnakeGridDiscrete._render_as_string_onehot,
+            SnakeGrid._render_as_string,
             tensordict=trajectory.cpu(),
         )
 

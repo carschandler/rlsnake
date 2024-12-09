@@ -1,6 +1,6 @@
-name: rlsnakes
+name: rlsnake
 services:
-    rlsnakes:
+    rlsnake:
         devices:
             - nvidia.com/gpu=all
         volumes:
@@ -14,12 +14,9 @@ services:
           source: ./scripts
           target: /workspace/scripts
         - type: bind
-          source: ./output
-          target: /workspace/output
-        - type: bind
-          source: ./src
-          target: /workspace/src
+          source: ./training
+          target: /workspace/training
         env_file: .env
         stdin_open: true
         tty: true
-        image: rlsnakes
+        image: rlsnake

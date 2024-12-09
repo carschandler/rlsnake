@@ -9,9 +9,7 @@ class SnakeGridDiscrete(SnakeGrid):
     def __init__(self, render_mode=None, size=5, dtype=np.uint8):
         super().__init__(render_mode, size, dtype)
 
-        num_discrete_values_per_location = np.full_like(
-            self.get_wrapper_attr("all_indices"), len(States)
-        )
+        num_discrete_values_per_location = np.full_like(self.all_indices, len(States))
 
         self.observation_space = MultiDiscrete(
             nvec=num_discrete_values_per_location,

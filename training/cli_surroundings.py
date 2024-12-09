@@ -31,7 +31,9 @@ def parse_args():
         help="Discount factor to use in the return/value function calculations.",
     )
 
-    parser.add_argument("--board-size", "-s", default=5, help="Playable board size.")
+    parser.add_argument(
+        "--board-size", "-s", default=5, type=int, help="Playable board size."
+    )
     parser.add_argument(
         "--max-episode-steps",
         "-m",

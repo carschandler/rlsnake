@@ -4,7 +4,7 @@ from gymnasium import spaces
 from .snake_base import SnakeBase
 
 
-class SnakeSurroundings(SnakeBase):
+class SnakeDirectional(SnakeBase):
     def __init__(self, render_mode=None, size=5):
         super().__init__(render_mode, size)
 

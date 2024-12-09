@@ -2,14 +2,18 @@
 import argparse
 from pathlib import Path
 
+import cli
 import torch
-from snake.envs import SnakeGrid
+from snake.envs import SnakeGridDiscrete
 from snake.render.asciinema import render_trajectory
 from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential as Seq
 from torchrl.envs import (
+    Compose,
+    DTypeCastTransform,
     FlattenObservation,
     GymEnv,
+    PermuteTransform,
     StepCounter,
     TransformedEnv,
     UnsqueezeTransform,
@@ -29,103 +33,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
 # %%
-parser = argparse.ArgumentParser()
-parser.add_argument("exp_name")
-parser.add_argument(
-    "--offline",
-    "-o",
-    action="store_true",
-    help="Stores the run locally with the option to sync it to wandb after the fact.",
-)
-parser.add_argument(
-    "--tags",
-    "-t",
-    nargs="*",
-    default=[],
-    help=(
-        "Tags to add to the experiment in wandb. Can also be added in post through the"
-        " web UI."
-    ),
-)
-parser.add_argument(
-    "--gamma",
-    "-g",
-    default=0.99,
-    type=float,
-    help="Discount factor to use in the return/value function calculations.",
-)
-parser.add_argument("--board-size", "-s", default=5, help="Playable board size.")
-parser.add_argument(
-    "--max-episode-steps",
-    "-m",
-    default=5000,
-    type=int,
-    help="Maximum steps allowed in an episode before it is truncated.",
-)
-parser.add_argument(
-    "--adam-learning-rate",
-    "-L",
-    default=0.002,
-    type=float,
-    help="The learning rate to use in the ADAM optimizer.",
-)
-parser.add_argument(
-    "--kernel-sizes",
-    "-k",
-    nargs=2,
-    type=int,
-    default=[3, 2],
-    help="Kernel sizes to use in the CNN layers.",
-)
-parser.add_argument(
-    "--buffer-length",
-    "-l",
-    default=1_000_000,
-    type=int,
-    help="Length of the ReplayBuffer",
-)
-parser.add_argument(
-    "--epsilon-bounds",
-    "-e",
-    nargs=2,
-    type=float,
-    default=[0.7, 0.00],
-    help=(
-        "Start and end values for the epsilon to use in the epsilon-greedy exploration"
-        " module. Controls exploration vs. exploitation during training. Pass the high"
-        " (starting) value first followed by the low (end) value."
-    ),
-)
-parser.add_argument(
-    "--init-rand-steps",
-    "-r",
-    default=5000,
-    type=int,
-    help=(
-        "How many random steps should be taken before engaging the exploration module."
-    ),
-)
-parser.add_argument(
-    "--steps-per-batch",
-    "-b",
-    default=100,
-    type=int,
-    help="How many steps to take in each batch from the data collector.",
-)
-parser.add_argument(
-    "--optim-steps",
-    "-S",
-    default=10,
-    type=int,
-    help="How many passes of the optimizer to make during each batch sample",
-)
-
-args = parser.parse_args()
+args = cli.parse_args()
 
 # %%
-env = GymEnv("snake/SnakeGrid", size=args.board_size)
-env = TransformedEnv(env, UnsqueezeTransform(-3, in_keys=["observation"]))
-env = TransformedEnv(env, StepCounter(max_steps=args.max_episode_steps))
+env = GymEnv("snake/SnakeGridDiscrete", size=args.board_size)
+transforms = Compose(
+    StepCounter(max_steps=args.max_episode_steps),
+    DTypeCastTransform(torch.int64, torch.float32, in_keys="observation"),
+    PermuteTransform(dims=[-1, -3, -2], in_keys="observation"),
+)
+env = TransformedEnv(env, transforms)
 env.auto_register_info_dict()
 
 # %%
@@ -213,7 +130,7 @@ try:
     from torchrl.record import WandbLogger
 
     logger = WandbLogger(
-        project="rlsnakes",
+        project="rlsnake",
         exp_name=args.exp_name,
         offline=args.offline,
         tags=["duelingdqn"] + args.tags,
@@ -269,7 +186,7 @@ for i, data in enumerate(collector):
 
         render_trajectory(
             str(video_dir / f"snake_length_{max_snake_length}.cast"),
-            SnakeGrid._render_as_string,
+            SnakeGridDiscrete._render_as_string_onehot,
             tensordict=trajectory.cpu(),
         )
 

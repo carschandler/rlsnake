@@ -5,8 +5,9 @@ import gymnasium as gym
 
 # import pygame
 import numpy as np
+import torch
 from gymnasium import spaces
-from numpy.typing import DTypeLike, NDArray
+from numpy.typing import NDArray
 
 
 class Directions(Enum):
@@ -53,7 +54,7 @@ IntArray: TypeAlias = NDArray[np.int64]
 class SnakeBase(gym.Env):
     metadata = {"render_modes": ["human", "ansi"], "render_fps": 4}
 
-    def __init__(self, render_mode=None, size=5, dtype: DTypeLike = np.float32):
+    def __init__(self, render_mode=None, size=5, dtype = np.float32):
         # The width of the playable square grid
         self.playable_size = size
         # The width of the playable grid plus the surrounding walls
@@ -271,7 +272,7 @@ class SnakeBase(gym.Env):
                 board, string_board, state_value, current_direction
             )
 
-        if dead:
+        if dead and not won:
             string_board[
                 np.isin(board, [States.HEAD.value, States.TAIL.value])
             ] = DEAD_SYMBOL

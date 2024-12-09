@@ -2,7 +2,7 @@
 import argparse
 from pathlib import Path
 
-import cli
+import cli_positions
 import torch
 from snake.envs import SnakeGrid
 from snake.render.asciinema import render_trajectory
@@ -10,6 +10,7 @@ from tensordict import TensorDict
 from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential as Seq
 from torchrl.envs import (
+    CatTensors,
     ExplorationType,
     FlattenObservation,
     GymEnv,
@@ -33,13 +34,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
 # %%
-args = cli.parse_args()
+args = cli_positions.parse_args()
 
 # %%
-env = GymEnv("snake/SnakeGrid", size=args.board_size, render_mode="ansi")
-env = TransformedEnv(env, UnsqueezeTransform(-3, in_keys=["observation"]))
+env = GymEnv("snake/SnakePositions", size=args.board_size, render_mode="ansi")
+try:
+    env.auto_register_info_dict()
+except Exception:
+    pass
+env = TransformedEnv(env, CatTensors(["food", "nearest_danger"], "observation"))
 env = TransformedEnv(env, StepCounter(max_steps=args.max_episode_steps))
-env.auto_register_info_dict()
 
 # %%
 env.reset()
@@ -53,27 +57,14 @@ env.reset()
 #         action_dim=env.action_spec.shape[-1], conv_net_kwargs={"kernel_sizes": 2}
 #     )
 # )
-value_net = DuelingCnnDQNet(
-    out_features=env.action_spec.shape[-1],
-    out_features_value=1,
-    cnn_kwargs={
-        "kernel_sizes": args.kernel_sizes,
-        "strides": 1,
-    },
-    mlp_kwargs={
-        "depth": 2,
-        "num_cells": [
-            64,
-            64,
-        ],
-    },
-    device=device,
-)
+value_net = MLP(depth=2, num_cells=[64, 64], out_features=4)
 policy = QValueActor(value_net, spec=env.action_spec)
 policy(env.fake_tensordict())
 
 
+env.reset()
 rollout = env.rollout(max_steps=5, policy=policy)
+env.reset()
 
 # %%
 exploration_module = EGreedyModule(
@@ -124,10 +115,10 @@ try:
     from torchrl.record import WandbLogger
 
     logger = WandbLogger(
-        project="rlsnakes",
+        project="rlsnake",
         exp_name=args.exp_name,
         offline=args.offline,
-        tags=["duelingdqn", "grid"] + args.tags,
+        tags=["positions", "dqn"] + args.tags,
         config=args,
     )
 except Exception:
@@ -143,7 +134,7 @@ total_episodes = 0
 t0 = time.time()
 prev_max = 0
 for i, data in enumerate(collector):
-    print(i, len(rb), prev_max)
+    print(f"{i}: len(rb)={len(rb)}, max={prev_max}, eps={exploration_module.eps}")
     # Write data in replay buffer
     rb.extend(data)
 
@@ -166,10 +157,14 @@ for i, data in enumerate(collector):
             updater.step()
         if i % 10 == 0:
             with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
-                rollout: TensorDict = env.rollout(1000, policy_explore, break_when_any_done=False) # type: ignore
+                n_rollout = 2000
+                rollout: TensorDict = env.rollout(n_rollout, policy_explore, break_when_any_done=False)  # type: ignore
                 max_snake_length = rollout["next", "snake_length"].max()
                 max_step_count = rollout["next", "step_count"].max()
-                print(max_snake_length, len(rollout))
+                print(
+                    f"rollout({n_rollout}) max score: {max_snake_length}, max episode steps:"
+                    f" {rollout['next', 'step_count'].max().item()}"
+                )
 
                 logger.log_scalar("Episode Score", max_snake_length)
                 logger.log_scalar("Steps in Episode", max_step_count)
@@ -196,13 +191,15 @@ for i, data in enumerate(collector):
                     if rollout["next", "truncated"][i_end].item():
                         print(
                             "Warning: the trajectory which yielded a max score of"
-                            f" {max_snake_length} was truncated at {args.max_episode_steps} steps."
+                            f" {max_snake_length} was truncated at"
+                            f" {args.max_episode_steps} steps."
                         )
                     logger.log_scalar("Overall Max Score", max_snake_length)
 
                     print(
-                        f"New max of {max_snake_length}; rb = {len(rb):,}/{args.buffer_length:,};"
-                        f" eps = {exploration_module.eps}"
+                        f"New max of {max_snake_length}; rb ="
+                        f" {len(rb):,}/{args.buffer_length:,}; eps ="
+                        f" {exploration_module.eps}"
                     )
                     prev_max = max_snake_length
 
@@ -219,19 +216,18 @@ for i, data in enumerate(collector):
                         tensordict=trajectory.cpu(),
                     )
 
-
-    # if max_snake_length == 100:
-    # if len(rb) >= args.buffer_length:
-    #     break
+    if prev_max == 25:
+        break
 
 
 t1 = time.time()
 
 torchrl_logger.info(
-    f"done after {total_steps_in_training} steps, {total_episodes} episodes and in {t1-t0}s."
+    f"done after {total_steps_in_training} steps, {total_episodes} episodes and in"
+    f" {t1-t0}s."
 )
 
-final_rollout = env.rollout(max_steps=10000, break_when_any_done=False, policy=policy) # type: ignore
+final_rollout = env.rollout(max_steps=10000, break_when_any_done=False, policy=policy)  # type: ignore
 
 final_max_snake_length = final_rollout["next", "snake_length"].max()
 
@@ -267,6 +263,4 @@ torchrl_logger.info(
     f"Final rollout max score: {final_max_snake_length} in {len(trajectory)} steps"
 )
 
-torchrl_logger.info(
-    f"Overall max score: {prev_max}"
-)
+torchrl_logger.info(f"Overall max score: {prev_max}")

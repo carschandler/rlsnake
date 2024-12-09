@@ -2,7 +2,8 @@
 import argparse
 from pathlib import Path
 
-import cli_positions
+import cli_surroundings
+import numpy as np
 import torch
 from snake.envs import SnakeGrid
 from snake.render.asciinema import render_trajectory
@@ -11,6 +12,7 @@ from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential as Seq
 from torchrl.envs import (
     CatTensors,
+    DTypeCastTransform,
     ExplorationType,
     FlattenObservation,
     GymEnv,
@@ -34,15 +36,18 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
 # %%
-args = cli_positions.parse_args()
+args = cli_surroundings.parse_args()
 
 # %%
-env = GymEnv("snake/SnakePositions", size=args.board_size, render_mode="ansi")
+env = GymEnv("snake/SnakeSurroundings", size=args.board_size, render_mode="ansi")
 try:
     env.auto_register_info_dict()
 except Exception:
     pass
-env = TransformedEnv(env, CatTensors(["food", "nearest_danger"], "observation"))
+env = TransformedEnv(env, CatTensors(["food", "danger"], "observation"))
+env = TransformedEnv(
+    env, DTypeCastTransform(torch.int8, torch.float32, in_keys="observation")
+)
 env = TransformedEnv(env, StepCounter(max_steps=args.max_episode_steps))
 
 # %%
@@ -74,7 +79,9 @@ exploration_module = EGreedyModule(
     eps_end=args.epsilon_bounds[1],
 )
 
-policy_explore = Seq(policy, exploration_module)
+# policy_explore = Seq(policy, exploration_module)
+policy_explore = torch.load("./output/surroundings_dqn_win/policy_explore.pt").cuda()
+policy = policy_explore[0]
 
 # %%
 from torchrl.collectors import SyncDataCollector
@@ -115,10 +122,10 @@ try:
     from torchrl.record import WandbLogger
 
     logger = WandbLogger(
-        project="rlsnakes",
+        project="rlsnake",
         exp_name=args.exp_name,
         offline=args.offline,
-        tags=["positions", "dqn"] + args.tags,
+        tags=["surroundings", "dqn"] + args.tags,
         config=args,
     )
 except Exception:
@@ -162,8 +169,8 @@ for i, data in enumerate(collector):
                 max_snake_length = rollout["next", "snake_length"].max()
                 max_step_count = rollout["next", "step_count"].max()
                 print(
-                    f"rollout({n_rollout}) max score: {max_snake_length}, max episode steps:"
-                    f" {rollout['next', 'step_count'].max().item()}"
+                    f"rollout({n_rollout}) max score: {max_snake_length}, max episode"
+                    f" steps: {rollout['next', 'step_count'].max().item()}"
                 )
 
                 logger.log_scalar("Episode Score", max_snake_length)
@@ -216,7 +223,7 @@ for i, data in enumerate(collector):
                         tensordict=trajectory.cpu(),
                     )
 
-    if prev_max == 25:
+    if prev_max == args.board_size ** 2:
         break
 
 

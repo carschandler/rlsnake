@@ -6,6 +6,7 @@ dependencies:
   - _libgcc_mutex=0.1
   - _openmp_mutex=4.5
   - archspec=0.2.3
+  - asciinema=2.4.0
   - asttokens=2.4.1
   - attrs=24.2.0
   - beautifulsoup4=4.12.3

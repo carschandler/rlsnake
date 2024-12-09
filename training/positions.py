@@ -6,7 +6,7 @@ import uuid
 import cli_positions
 import snake
 import torch
-from snake.envs import SnakePositions
+from snake.envs import SnakePositional
 from tensordict.nn import TensorDictModule, TensorDictSequential
 from torch import nn
 from torchrl.collectors import MultiaSyncDataCollector, SyncDataCollector

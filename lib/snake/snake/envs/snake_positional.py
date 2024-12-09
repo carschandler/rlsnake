@@ -4,25 +4,29 @@ from gymnasium import spaces
 from .snake_base import SnakeBase
 
 
-class SnakePositions(SnakeBase):
+class SnakePositional(SnakeBase):
     def __init__(self, render_mode=None, size=5):
         super().__init__(render_mode, size)
 
         # Agent observes the 8 tiles directly surrounding its head, returning a
         # binary result for each tile indicating whether there is danger or not.
         # Additionally, it observes if food is above, below, left, and/or right.
-        max_distance_1d = size - 1
+        max_distance_1d = size
         self.observation_space = spaces.Dict(
             {
                 # Distance from the head in each direction
                 "nearest_danger": spaces.Box(
-                    low=np.array([-max_distance_1d] * 4),
-                    high=np.array([max_distance_1d] * 4),
+                    low=1,
+                    high=max_distance_1d,
+                    shape=[4],
+                    dtype=self.dtype,  # type: ignore
                 ),
                 # The position of the food relative to the head
                 "food": spaces.Box(
-                    low=np.array([-max_distance_1d] * 2),
-                    high=np.array([max_distance_1d] * 2),
+                    low=-max_distance_1d,
+                    high=max_distance_1d,
+                    shape=[2],
+                    dtype=self.dtype,  # type: ignore
                 ),
             }
         )

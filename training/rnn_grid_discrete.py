@@ -5,7 +5,7 @@ import cli_rnn
 import snake
 import torch
 import tqdm
-from snake.envs import SnakeGrid
+from snake.envs import SnakeGridDiscrete
 from snake.render.asciinema import render_trajectory
 from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential
@@ -15,10 +15,12 @@ from torchrl.collectors import SyncDataCollector
 from torchrl.data import LazyMemmapStorage, TensorDictReplayBuffer
 from torchrl.envs import (
     Compose,
+    DTypeCastTransform,
     ExplorationType,
     GrayScale,
     InitTracker,
     ObservationNorm,
+    PermuteTransform,
     Resize,
     RewardScaling,
     StepCounter,
@@ -40,16 +42,27 @@ device = (
     else torch.device("cpu")
 )
 
+n_cells = 64  # HACK
 
-env = TransformedEnv(
-    GymEnv("snake/SnakeGrid", render_mode="ansi", device=device),
-    Compose(
-        UnsqueezeTransform(-3, in_keys="observation"),
-        StepCounter(max_steps=2000),
-        InitTracker(),
-    ),
+lstm = LSTMModule(
+    input_size=n_cells,
+    hidden_size=32,
+    device=device,
+    in_key="embed",
+    out_key="embed",
 )
+
+env = GymEnv("snake/SnakeGridDiscrete", size=args.board_size)
 env.auto_register_info_dict()
+
+transforms = Compose(
+    StepCounter(max_steps=args.max_episode_steps),
+    DTypeCastTransform(torch.int64, torch.float32, in_keys="observation"),
+    InitTracker(),
+)
+env = TransformedEnv(env, transforms)
+env.append_transform(lstm.make_tensordict_primer())
+env = TransformedEnv(env, PermuteTransform(dims=[-1, -3, -2], in_keys="observation"))
 
 feature = Mod(
     ConvNet(
@@ -63,17 +76,6 @@ feature = Mod(
     out_keys=["embed"],
 )
 
-n_cells = feature(env.reset())["embed"].shape[-1]
-
-lstm = LSTMModule(
-    input_size=n_cells,
-    hidden_size=32,
-    device=device,
-    in_key="embed",
-    out_key="embed",
-)
-
-env.append_transform(lstm.make_tensordict_primer())
 
 mlp = MLP(
     out_features=4,
@@ -133,7 +135,7 @@ try:
     from torchrl.record import WandbLogger
 
     logger = WandbLogger(
-        project="rlsnakes",
+        project="rlsnake",
         exp_name=args.exp_name,
         offline=args.offline,
         tags=["rnn", "grid"] + args.tags,
@@ -171,7 +173,7 @@ for i, data in enumerate(collector):
         logger.log_scalar(f"Max steps in batch of {args.steps_per_batch}", max_steps)
         logger.log_scalar("epsilon", exploration_module.eps)
         logger.log_scalar(f"Max Score Across All Training Steps", longest)
-        logger.log_scalar("DQN Loss", loss_vals['loss'].item())
+        logger.log_scalar("DQN Loss", loss_vals["loss"].item())
         with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
             n_rollout = 1000
             rollout = env.rollout(n_rollout, stoch_policy)
@@ -210,7 +212,7 @@ for i, data in enumerate(collector):
 
                 render_trajectory(
                     str(video_dir / f"snake_length_{max_len}.cast"),
-                    SnakeGrid._render_as_string,
+                    SnakeGridDiscrete._render_as_string_onehot,
                     tensordict=trajectory.cpu(),
                 )
 
