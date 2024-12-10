@@ -2,7 +2,9 @@ import argparse
 
 
 def parse_args():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument("exp_name")
     parser.add_argument(
         "--offline",
@@ -35,7 +37,7 @@ def parse_args():
     parser.add_argument(
         "--max-episode-steps",
         "-m",
-        default=5000,
+        default=2000,
         type=int,
         help="Maximum steps allowed in an episode before it is truncated.",
     )
@@ -72,6 +74,45 @@ def parse_args():
         default=100,
         type=int,
         help="How many steps to take in each batch from the data collector.",
+    )
+
+    parser.add_argument(
+        "--kernel-sizes",
+        default=[3, 2, 2],
+        type=int,
+        nargs="+",
+        help="Size of kernel for each layer in CNN",
+    )
+
+    parser.add_argument(
+        "--cnn-cells",
+        default=[16, 16, 16],
+        type=int,
+        nargs="+",
+        help="Size of each layer in CNN",
+    )
+
+    parser.add_argument(
+        "--paddings",
+        default=1,
+        type=int,
+        nargs="+",
+        help="Size of padding for each layer in CNN",
+    )
+
+    parser.add_argument(
+        "--hidden-size",
+        default=128,
+        type=int,
+        help="Size of hiddel layer in RNN",
+    )
+
+    parser.add_argument(
+        "--mlp-cells",
+        default=32,
+        type=int,
+        nnargs="+",
+        help="Size of MLP layers",
     )
 
     parser.add_argument(

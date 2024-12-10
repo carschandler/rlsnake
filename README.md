@@ -80,7 +80,14 @@ replacing the fields with the values corresponding to your wandb credentials.
 ## Running
 
 Once your Python environment is set up, enter the `training` directory of the
-cloned repo with and then use `python positional_dqn.py` to run RL training.
+cloned repo with and then use `python positional_dqn.py
+<choose an experiment name here>` to run RL training.
+
+Each of the training scripts has a corresponding CLI module dictating which
+hyperparameters it accepts and defaults for them. The defaults have been set to
+the parameters that yielded the highest scores during our testing, but modify
+them as you wish. The only required argument is a name for your experiment,
+which is arbitrary and up to your own choice.
 
 ## Results
 

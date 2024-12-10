@@ -1,5 +1,4 @@
 # %%
-import argparse
 from pathlib import Path
 
 import cli_positional
@@ -7,33 +6,25 @@ import torch
 from snake.envs import SnakeGrid
 from snake.render.asciinema import render_trajectory
 from tensordict import TensorDict
-from tensordict.nn import TensorDictModule as Mod
 from tensordict.nn import TensorDictSequential as Seq
 from torchrl.envs import (
     CatTensors,
     ExplorationType,
-    FlattenObservation,
     GymEnv,
     StepCounter,
     TransformedEnv,
-    UnsqueezeTransform,
     set_exploration_type,
 )
-from torchrl.modules import (
-    MLP,
-    Actor,
-    ConvNet,
-    DdpgCnnActor,
-    DdpgCnnQNet,
-    DuelingCnnDQNet,
-    EGreedyModule,
-    QValueActor,
-)
+from torchrl.modules import MLP, EGreedyModule, QValueActor
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_default_device(device)
 
 # %%
+
+# Parse arguments and set up environment, transforming outputs as needed to
+# make them compatible with the inputs of our approximation modules
+
 args = cli_positional.parse_args()
 
 # %%
@@ -48,19 +39,11 @@ env = TransformedEnv(env, StepCounter(max_steps=args.max_episode_steps))
 # %%
 env.reset()
 
-# %%
-# value_net = ConvNet(strides=1, kernel_sizes=[3, 3, 2])
-# policy = Seq(QValueActor(value_net, spec=env.action_spec))
-# value_net = DdpgCnnQNet()
-# policy = Actor(
-#     DdpgCnnActor(
-#         action_dim=env.action_spec.shape[-1], conv_net_kwargs={"kernel_sizes": 2}
-#     )
-# )
+# Set up value approximator, policy, exploration modules
+
 value_net = MLP(depth=2, num_cells=[64, 64], out_features=4)
 policy = QValueActor(value_net, spec=env.action_spec)
 policy(env.fake_tensordict())
-
 
 env.reset()
 rollout = env.rollout(max_steps=5, policy=policy)
@@ -77,6 +60,9 @@ exploration_module = EGreedyModule(
 policy_explore = Seq(policy, exploration_module)
 
 # %%
+
+# Set up interfaces for storing data and sampling rollouts
+
 from torchrl.collectors import SyncDataCollector
 from torchrl.data import LazyTensorStorage, ReplayBuffer
 
@@ -90,9 +76,12 @@ collector = SyncDataCollector(
 )
 rb = ReplayBuffer(storage=LazyTensorStorage(args.buffer_length, device=device))
 
-from torch.optim import Adam
 
 # %%
+
+# Initialize optimizers
+
+from torch.optim import Adam
 from torchrl.objectives import DQNLoss, SoftUpdate
 
 loss = DQNLoss(value_network=policy, action_space=env.action_spec, delay_value=True)
@@ -129,6 +118,9 @@ except Exception:
     logger.log_hparams(vars(args))
 
 # %%
+
+# Training loop
+
 total_steps_in_training = 0
 total_episodes = 0
 t0 = time.time()
@@ -156,6 +148,9 @@ for i, data in enumerate(collector):
             # Update target params
             updater.step()
         if i % 10 == 0:
+
+            # Evaluate the policy without exploration
+
             with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
                 n_rollout = 2000
                 rollout: TensorDict = env.rollout(n_rollout, policy_explore, break_when_any_done=False)  # type: ignore
@@ -176,6 +171,10 @@ for i, data in enumerate(collector):
                 env.reset()
 
                 if max_snake_length > prev_max and max_snake_length > 5:
+
+                    # Pick out the specific trajectory that yielded the max and
+                    # save it as an asciinema video
+
                     i_max = rollout["next", "snake_length"].argmax()
                     i_start = rollout["next", "done"][:i_max].argwhere()
                     if i_start.numel() == 0:
@@ -204,7 +203,6 @@ for i, data in enumerate(collector):
                     prev_max = max_snake_length
 
                     trajectory = rollout["next"][i_start : i_end + 1]
-                    # trajectory = rollout["next"]
 
                     video_dir = path / args.exp_name / "videos"
 
