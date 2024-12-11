@@ -1,5 +1,7 @@
 # RL Snake for ECE59500 RL Theory
 
+https://github.com/carschandler/rlsnake
+
 ## Setup
 
 First, clone this repo.
