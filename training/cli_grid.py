@@ -60,7 +60,7 @@ def parse_args():
         "-e",
         nargs=2,
         type=float,
-        default=[0.2, 0.0],
+        default=[0.7, 0.05],
         help=(
             "Start and end values for the epsilon to use in the epsilon-greedy"
             " exploration module. Controls exploration vs. exploitation during"
@@ -86,7 +86,7 @@ def parse_args():
 
     parser.add_argument(
         "--cnn-cells",
-        default=[16, 16, 16],
+        default=[32, 32, 64],
         type=int,
         nargs="+",
         help="Size of each layer in CNN",
@@ -109,9 +109,9 @@ def parse_args():
 
     parser.add_argument(
         "--mlp-cells",
-        default=32,
+        default=64,
         type=int,
-        nnargs="+",
+        nargs="+",
         help="Size of MLP layers",
     )
 
@@ -126,7 +126,7 @@ def parse_args():
     parser.add_argument(
         "--annealing-steps",
         "-a",
-        default=1_000_000,
+        default=500_000,
         type=int,
         help=(
             "How many steps it should take to go from the higher epsilon to lower"

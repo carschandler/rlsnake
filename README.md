@@ -17,7 +17,7 @@ should work as well.
 
 Install the docker CLI if you haven't already (not docker desktop).
 
-Build the docker image using
+Build the docker image by running the following from the root of the repo
 
 ```
 docker build -t rlsnake .
@@ -35,6 +35,13 @@ bind-mounts in the docker-compose file, meaning you can edit them on your host
 system and the changes will be reflected live in the docker image and
 vice-versa. Feel free to update `docker-compose.yaml` with more if needed.
 
+If this does not work, try
+
+```
+docker run -it rlsnake
+```
+
+It will not add the directories as bind-mounts, but should still run the code.
 
 #### Pixi
 

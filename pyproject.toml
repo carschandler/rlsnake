@@ -32,3 +32,10 @@ asciinema = ">=2.4.0,<3"
 wandb = ">=0.18.7,<0.19"
 dill = ">=0.3.9,<0.4"
 tqdm = ">=4.67.1,<5"
+
+[tool.pixi.feature.plotting.dependencies]
+pandas = "*"
+plotly = "*"
+
+[tool.pixi.environments]
+dev = ["plotting"]

@@ -54,8 +54,8 @@ feature = Mod(
     ConvNet(
         num_cells=args.cnn_cells,
         squeeze_output=True,
-        paddings=args.paddings,
-        kernel_sizes=args.kernel_sizes,
+        # paddings=args.paddings,
+        # kernel_sizes=args.kernel_sizes,
         aggregator_class=nn.AdaptiveAvgPool2d,
         aggregator_kwargs={"output_size": (1, 1)},
         device=device,
