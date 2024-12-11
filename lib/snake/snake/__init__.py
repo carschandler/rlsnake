@@ -11,11 +11,11 @@ register(
 )
 
 register(
-    id="snake/SnakeSurroundings",
-    entry_point="snake.envs:SnakeSurroundings",
+    id="snake/SnakeDirectional",
+    entry_point="snake.envs:SnakeDirectional",
 )
 
 register(
-    id="snake/SnakePositions",
-    entry_point="snake.envs:SnakePositions",
+    id="snake/SnakePositional",
+    entry_point="snake.envs:SnakePositional",
 )

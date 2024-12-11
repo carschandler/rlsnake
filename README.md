@@ -98,11 +98,15 @@ Once your Python environment is set up, enter the `training` directory of the
 cloned repo and then 
 
 ```
-python directional.py <choose an experiment name here>
+python directional.py <choose an experiment name here> --offline
 ```
 
 to run RL training. You can replace `directional.py` with any of the scripts
 that don't begin with `cli_`.
+
+The `--offline` tells wandb not to try to connect you. If you don't provide
+this, it will prompt you with options to either connect wandb on the spot or you
+can choose "Don't visualize my results" to get the same effect as `--offline`.
 
 Each of the training scripts has a corresponding CLI module dictating which
 hyperparameters it accepts and defaults for them. The defaults have been set to
