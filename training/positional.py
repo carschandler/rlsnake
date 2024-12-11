@@ -28,7 +28,7 @@ torch.set_default_device(device)
 args = cli_positional.parse_args()
 
 # %%
-env = GymEnv("snake/SnakePositions", size=args.board_size, render_mode="ansi")
+env = GymEnv("snake/SnakePositional", size=args.board_size, render_mode="ansi")
 try:
     env.auto_register_info_dict()
 except Exception:
@@ -157,8 +157,8 @@ for i, data in enumerate(collector):
                 max_snake_length = rollout["next", "snake_length"].max()
                 max_step_count = rollout["next", "step_count"].max()
                 print(
-                    f"rollout({n_rollout}) max score: {max_snake_length}, max episode steps:"
-                    f" {rollout['next', 'step_count'].max().item()}"
+                    f"rollout({n_rollout}) max score: {max_snake_length}, max episode"
+                    f" steps: {rollout['next', 'step_count'].max().item()}"
                 )
 
                 logger.log_scalar("Episode Score", max_snake_length)

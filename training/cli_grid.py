@@ -109,7 +109,7 @@ def parse_args():
 
     parser.add_argument(
         "--mlp-cells",
-        default=64,
+        default=[64],
         type=int,
         nargs="+",
         help="Size of MLP layers",

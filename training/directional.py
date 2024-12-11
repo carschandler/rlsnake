@@ -6,6 +6,7 @@ import torch
 from snake.envs import SnakeGrid
 from snake.render.asciinema import render_trajectory
 from tensordict import TensorDict
+from tensordict.nn import TensorDictSequential as Seq
 from torchrl.envs import (
     CatTensors,
     DTypeCastTransform,
@@ -28,7 +29,7 @@ torch.set_default_device(device)
 args = cli_directional.parse_args()
 
 # %%
-env = GymEnv("snake/SnakeSurroundings", size=args.board_size, render_mode="ansi")
+env = GymEnv("snake/SnakeDirectional", size=args.board_size, render_mode="ansi")
 try:
     env.auto_register_info_dict()
 except Exception:
@@ -61,9 +62,7 @@ exploration_module = EGreedyModule(
     eps_end=args.epsilon_bounds[1],
 )
 
-# policy_explore = Seq(policy, exploration_module)
-policy_explore = torch.load("./output/surroundings_dqn_win/policy_explore.pt").cuda()
-policy = policy_explore[0]
+policy_explore = Seq(policy, exploration_module)
 
 # %%
 
@@ -217,7 +216,7 @@ for i, data in enumerate(collector):
                         tensordict=trajectory.cpu(),
                     )
 
-    if prev_max == args.board_size ** 2:
+    if prev_max == args.board_size**2:
         break
 
 
