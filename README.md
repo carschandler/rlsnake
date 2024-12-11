@@ -23,6 +23,12 @@ Build the docker image by running the following from the root of the repo
 docker build -t rlsnake .
 ```
 
+Create an environment variables file (populating it is optional)
+
+```
+touch .env
+```
+
 Run the image interactively using
 
 ```
@@ -87,14 +93,26 @@ replacing the fields with the values corresponding to your wandb credentials.
 ## Running
 
 Once your Python environment is set up, enter the `training` directory of the
-cloned repo with and then use `python positional_dqn.py
-<choose an experiment name here>` to run RL training.
+cloned repo and then 
+
+```
+python directional.py <choose an experiment name here>
+```
+
+to run RL training. You can replace `directional.py` with any of the scripts
+that don't begin with `cli_`.
 
 Each of the training scripts has a corresponding CLI module dictating which
 hyperparameters it accepts and defaults for them. The defaults have been set to
 the parameters that yielded the highest scores during our testing, but modify
 them as you wish. The only required argument is a name for your experiment,
 which is arbitrary and up to your own choice.
+
+To see the options available in the CLI, use:
+
+```
+python directional.py --help
+```
 
 ## Results
 
