@@ -1,6 +1,6 @@
 # RL Snake for ECE59500 RL Theory
 
-https://github.com/carschandler/rlsnake
+Check out the final report at [`report/report.pdf`](report/report.pdf)
 
 ## Setup
 
