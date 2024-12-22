@@ -13,7 +13,9 @@ which are contained in [`lib/snake`](lib/snake). The policies are trained using
 the new [TorchRL](https://pytorch.org/rl/stable/index.html) library: the
 official RL component of the PyTorch ecosystem. I utilized the DDQN algorithm
 paired with both MLPs and RNNs/CNNs to approximate value functions depending on
-the observation space used.
+the observation space used. Results are optionally logged to a [Weights and
+Biases](https://wandb.ai) instance for tracking experiment results and running
+"sweeps" of parameter combinations.
 
 ## Setup
 
