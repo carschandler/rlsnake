@@ -537,7 +537,7 @@ directional case, so it will have more time to react to the information.
 == Grid Environment
 
 The grid environment was able to learn a policy that obtained a maximum score of
-17. This was an underwhelming result given the high hopes we had for this
+\17. This was an underwhelming result given the high hopes we had for this
 combination of an information-rich observation space and a neural network that
 is known to extract positional relationships from grid-like features. We expect
 that with more time and further study of the inner workings of the RNN/CNN
