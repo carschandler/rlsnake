@@ -1,6 +1,19 @@
-# RL Snake for ECE59500 RL Theory
+# Deep Reinforcement Learning with Varying Levels of Observability in _Snake_
 
 Check out the final report at [`report/report.pdf`](report/report.pdf)
+
+## Summary
+
+This scope of this project was to study the effect of manipulating the
+observation space (the space of possible observations that the agent makes on
+the true state of the environment) on the performance and behavior of trained RL
+policies. It includes a custom implementation of _Snake_ and four different
+observation spaces using the [Gymnasium](https://gymnasium.farama.org/) API,
+which are contained in [`lib/snake`](lib/snake). The policies are trained using
+the new [TorchRL](https://pytorch.org/rl/stable/index.html) library: the
+official RL component of the PyTorch ecosystem. I utilized the DDQN algorithm
+paired with both MLPs and RNNs/CNNs to approximate value functions depending on
+the observation space used.
 
 ## Setup
 

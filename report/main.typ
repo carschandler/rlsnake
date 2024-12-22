@@ -5,12 +5,9 @@
 
 #set par(justify: true)
 #set text(
-  //font: "Times New Roman",
-  font: "STIX Two Text", // free and similar to Times New Roman
   size: 11pt,
 )
 
-// Not sure if I like this
 #show raw: it => {
   box(fill: rgb("#eee"), outset: 2pt, radius: 1pt, it)
 }
@@ -31,7 +28,7 @@
     *Deep Reinforcement Learning with Varying Levels of Observability in _Snake_*
     #linebreak()
     #text(12pt)[
-      Robert Chandler & Joshua Day
+      Robert Chandler
     ]
   ])
 )
@@ -40,12 +37,11 @@
   linebreak()
 }
 
-// Unsure if we should have a table of contents or not...
 #outline(indent: auto)
+
 #pagebreak()
 
 = Introduction <intro>
-// Objective and Motivation
 
 In real-world reinforcement learning applications for Markov processes, it is
 typically impossible to have total access to the underlying state of the
@@ -128,77 +124,12 @@ solutions for the grid-based observation spaces, we employ a recurrent neural
 network (RNN) to train our policy, which incorporates time history into the
 learned policy, and therefore does not satisfy the Markov property.
 
-== Theoretical Analysis
-
-_Snake_ has been studied rigorously in the field of graph theory @snakeonagraph,
-and we show that some of these concepts directly apply to the context of
-reinforcement learning. We desire to investigate the effect of the observation
-space on the resulting learned policy. We consider a case where each observation
-is the position of the snake's head in the grid and there are four possible
-actions corresponding to moving the head in one of the cardinal directions.
-
-*Claim*: If the $m times n$ grid has a Hamiltonian cycle, then there exists a
-deterministic, stationary policy $pi$ that can win the snake game.
-
-// Start Proof
-*Proof*: Assume an $m times n$ grid has a Hamiltonian cycle $(v_1, v_2, ...,
-v_(m dot n))$ (a closed path in a graph which visits each vertex exactly once).
-From this cycle we can define a function $alpha: cal(S) arrow cal(A)$ which
-takes a state and returns the action in the grid that sends each vertex to the
-next vertex in the cycle, i.e. $ P(v_i, alpha(v_i)) = cases(v_(i+1) "if" i < m
-  n, v_1 "if" i = m n) $ where $P$ is the transition function of the MDP. We can
-define our stationary, deterministic policy as $pi(v_i) = alpha(v_i)$.
-
-To show that this policy will ultimately win the Snake game, consider the start
-of the game. If our agent (the size of a single cell) follows the of the
-Hamiltonian cycle, we will visit each of the $m n$ cells in the grid before
-repeating, and thus we must have visited at least one food cell on the grid
-after completing a full cycle. Furthermore, as long as the game remains
-unfinished, i.e. the length of the snake $l$ is less than $m n$, there will
-always be  $m n - l$ empty cells in front of the snake following the Hamiltonian
-cycle. Thus following this policy, the snake will not collide with a wall or
-it's tail, and continue gaining food every loop until the game is won.
-
-#align(right)[$square$] // End Proof
-
-With this strategy, we can also determine a worst-case upper bound on the number
-of time steps required to win the game. In the worst case, we would traverse
-each of the $m n$ cells and grow by a single cell each loop through the cycle.
-Since the games ends when the snake consists of $m n$ cells, we can guarantee to
-beat the game in time $t <= (m n)^2$.
-
-While this result is not universally applicable as it relies on the existence of
-a Hamiltonian cycle through the graph, it does have a few interesting
-implications. Since finding a Hamiltonian cycle is an NP-Complete problem, this
-provides some intuition towards the difficulty and nature of the problem for
-which we desire our agent to solve.
-
-#figure(
-  image(
-    "EvenGridHamCycle.png", 
-    width: 50%,
-    
-  ),
-  caption: [
-    A grid with an even number of rows showing the induced stationary,
-  deterministic policy from a Hamiltonian cycle.
-  ],
-)<cycle>
-
-Furthermore, from the work of #cite(<snakeonagraph>, form: "prose"), we see that
-if we have either an even number of rows or columns, then we can construct a
-Hamiltonian circuit in a rectangular grid. One such example is provided in
-@cycle. Finally, it is also noted that "Although odd-sized grid graphs are
-non-Hamiltonian, we can construct a cycle that contains all vertices except for
-one. In fact, we can find two of these cycles that differ by exactly one
-vertex." This means that we can still construct a winning policy in the case
-where both the number of rows and columns are odd, but it is no longer
-deterministic or stationary unless we augment the observation space with new
-information. 
-
 == Design of the Observation Space
 
-In a #cite(<obsspacedesign>, form: "year") paper from #cite(<obsspacedesign>, form: "author"), observation space design is studied from an algorithmic point of view, which is much deeper than the scope of this report, but their motivation is the same as ours @obsspacedesign. They state:
+In a #cite(<obsspacedesign>, form: "year") paper from #cite(<obsspacedesign>,
+  form: "author"), observation space design is studied from an algorithmic point
+of view, which is much deeper than the scope of this report, but their
+motivation is the same as ours @obsspacedesign. They state:
 
 #quote(block: true)[One of these key RL components is the observation space. The
   choice of observation space has a direct impact on the performance of the
@@ -234,7 +165,10 @@ $
 L_i (theta_i) = bb(E)_(s, a tilde.op rho(dot.op))[(y_i - Q(s, a; theta_i))^2],
 $
 
-where $y_i = bb(E)_(s' tilde.op cal(E)) [r + gamma max_(a') Q(s', a'; theta_(i - 1))|s, a]$ is the target for iteration $i$ and $rho(s,a)$ is a probability distribution over sequences $s$ and actions $a$ called the _behavior distribution_ @mnih2013playingatarideepreinforcement.
+where $y_i = bb(E)_(s' tilde.op cal(E)) [r + gamma max_(a') Q(s', a'; theta_(i -
+1))|s, a]$ is the target for iteration $i$ and $rho(s,a)$ is a probability
+distribution over sequences $s$ and actions $a$ called the _behavior
+distribution_ @mnih2013playingatarideepreinforcement.
 
 We technically are using the Double DQN (DDQN) form of this algorithm, which
 builds on the DQN algorithm by using two separate Q-value networks to avoid
@@ -244,13 +178,6 @@ We use the same number of maximum overall steps used for training for each
 algorithm to keep a consistent baseline for comparison as well.
 
 = Methodology
-// Define MDP, Agent, Etc.
-// Gym
-// Challenges?
-// wandb
-//
-
-// The solutions we created to achieve our objectives are quite technical in nature, but we outline the entire process step-by-step here.
 
 == Overview of Software Libraries
 
@@ -306,12 +233,13 @@ inherits from the abstract `Env` class and defines all of the common code which
 each of our four environments will inherit. 
 
 Every Gymnasium environment has three main requirements:
-+ An initialization method `__init__` which constructs all the state necessary for a new
-  environment and defines the `action_space` and `observation_space` properties
-  using the `gymnasium.spaces` module. We utilize a `spaces.Discrete` class for
-  our `action_space` with one discrete action for each of the four cardinal
-  directions.
-+ A `reset` method, which can be used to reset the state of the environment after an episode terminates.
++ An initialization method `__init__` which constructs all the state necessary
+  for a new environment and defines the `action_space` and `observation_space`
+  properties using the `gymnasium.spaces` module. We utilize a `spaces.Discrete`
+  class for our `action_space` with one discrete action for each of the four
+  cardinal directions.
++ A `reset` method, which can be used to reset the state of the environment
+  after an episode terminates.
 + A `step` method, which takes an `action` and returns:
   + A new `observation` which belongs to the `observation_space` defined.
   + A `reward` for the action. Our reward function is simply +1 if a food item
@@ -722,7 +650,6 @@ much more performance that can be drawn out of such an information-rich feature
 set, but we need to study the inner workings of the RNN and CNN architectures at
 a deeper level before we can understand where our shortcomings are as of now.
 
-
-
 #pagebreak()
+
 #bibliography("refs.bib", title: "References")
