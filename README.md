@@ -1,5 +1,7 @@
 # Deep Reinforcement Learning with Varying Levels of Observability in _Snake_
 
+[./snake_win.gif]
+
 Check out the final report at [`report/report.pdf`](report/report.pdf)
 
 ## Summary
